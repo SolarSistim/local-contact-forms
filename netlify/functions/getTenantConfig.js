@@ -8,6 +8,60 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
+const REQUIRED_FIELDS = [
+  "business_name",
+  "notify_on_submit",
+  "intro_text",
+  "meta_description",
+  "meta_keywords",
+  "post_submit_message",
+  "business_phone",
+  "business_address_1",
+  "business_address_2",
+  "business_city",
+  "business_state",
+  "business_zip",
+  "theme",
+];
+
+const ALLOWED_THEMES = ["Light", "Dark", "Tangerine Orange", "Jungle Green", "Lemon Yellow", "Ocean Blue", "Fury Red"];
+
+function validateTenantConfig(config = {}) {
+  const missing = [];
+
+  for (const field of REQUIRED_FIELDS) {
+    const raw = config[field];
+    const val = typeof raw === "string" ? raw.trim() : raw;
+    if (!val) {
+      missing.push(field);
+    }
+  }
+
+  const errors = [];
+
+  // basic email check for notify_on_submit
+  if (config.notify_on_submit) {
+    const email = config.notify_on_submit.trim();
+    const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+    if (!emailOk) {
+      errors.push(`notify_on_submit is not a valid email: "${email}"`);
+    }
+  }
+
+  // optional: theme must be one of allowed
+  if (config.theme && !ALLOWED_THEMES.includes(config.theme.trim())) {
+    errors.push(
+      `theme "${config.theme}" is not allowed. Allowed: ${ALLOWED_THEMES.join(", ")}`
+    );
+  }
+
+  return {
+    isValid: missing.length === 0 && errors.length === 0,
+    missing,
+    errors,
+  };
+}
+
 function normalizeTenantId(id) {
   return (id || "").trim().replace(/_/g, "-");
 }
@@ -69,7 +123,7 @@ async function getTenantRowFromMaster(sheets, tenantIdRaw) {
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: masterSheetId,
-    range: `${tabName}!A:D`,
+    range: `${tabName}!A:Z`,
   });
 
   const rows = res.data.values || [];
@@ -190,10 +244,18 @@ exports.handler = async (event) => {
       ...tenantConfig,
     };
 
+    const validation = validateTenantConfig(combined);
+
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
-      body: JSON.stringify({ success: true, config: combined }),
+      body: JSON.stringify({
+        success: true,
+        config: combined,
+        valid: validation.isValid,
+        missingRequiredFields: validation.missing,
+        validationErrors: validation.errors,
+      }),
     };
   } catch (err) {
     console.error("getTenantConfig error:", err.message);
