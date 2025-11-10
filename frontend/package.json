@@ -5,7 +5,7 @@
     "ng": "ng build",
     "start": "ng serve",
     "build": "ng build",
-    "postbuild": "cp -r dist/frontend/server ../backend/netlify/functions/",
+    "postbuild": "mkdir -p ../backend/netlify/functions/server && cp -r dist/frontend/server/* ../backend/netlify/functions/server/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:frontend": "node dist/frontend/server/server.mjs"

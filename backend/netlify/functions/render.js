@@ -1,38 +1,34 @@
 const { join } = require('path');
+const fs = require('fs');
 
 exports.handler = async (event, context) => {
   try {
-    // The server files are copied to backend/netlify/functions/server/
-    // But at runtime, __dirname is /var/task/backend/netlify/functions/
-    const serverPath = join(__dirname, 'server', 'server.mjs');
+    // Debug: List what's actually in the functions directory
+    const functionsDir = __dirname;
+    const serverDir = join(functionsDir, 'server');
     
-    console.log('Looking for server at:', serverPath);
-    console.log('__dirname:', __dirname);
+    console.log('Functions dir:', functionsDir);
+    console.log('Server dir:', serverDir);
     
-    const { default: serverApp } = await import('file://' + serverPath);
-    
-    // Build the full URL
-    const url = event.path + (event.rawQuery ? `?${event.rawQuery}` : '');
-    
-    // Call the Angular server
-    const response = await serverApp(url, event);
+    if (fs.existsSync(serverDir)) {
+      const files = fs.readdirSync(serverDir);
+      console.log('Files in server dir:', files);
+    } else {
+      console.log('Server directory does not exist!');
+    }
     
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-      },
-      body: response,
-    };
-  } catch (error) {
-    console.error('SSR Error:', error);
-    console.error('Error stack:', error.stack);
-    return {
-      statusCode: 500,
-      headers: {
         'Content-Type': 'text/plain',
       },
-      body: `SSR Error: ${error.message}\nStack: ${error.stack}`,
+      body: `Debug info logged to function console. Check Netlify function logs.`,
+    };
+  } catch (error) {
+    console.error('Error:', error);
+    return {
+      statusCode: 500,
+      body: error.message,
     };
   }
 };

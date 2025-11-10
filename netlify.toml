@@ -1,11 +1,11 @@
 [build]
-  command = "cd frontend && npm install && npm run build"
+  command = "npm install && cd frontend && npm install && npm run build"
   publish = "frontend/dist/frontend/browser"
   functions = "backend/netlify/functions"
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["frontend/dist/frontend/server/**"]
+  included_files = ["backend/netlify/functions/server/**/*"]
 
 [[redirects]]
   from = "/*"
