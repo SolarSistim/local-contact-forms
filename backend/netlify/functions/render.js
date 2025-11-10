@@ -1,3 +1,3 @@
-const { onRequest } = require('@netlify/angular-runtime');
+const { createRequestHandler } = require('@netlify/angular-runtime');
 
-exports.handler = onRequest;
+exports.handler = createRequestHandler();
