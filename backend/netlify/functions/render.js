@@ -9,43 +9,25 @@ exports.handler = async (event, context) => {
     // Create an instance of the Angular app engine
     const angularApp = new AngularAppEngine();
     
+    // Debug: Check available methods
+    console.log('AngularAppEngine methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(angularApp)));
+    console.log('AngularAppEngine instance keys:', Object.keys(angularApp));
+    
     // Build the request URL
     const url = event.path + (event.rawQuery ? `?${event.rawQuery}` : '');
-    
-    // Render the Angular application
-    const html = await angularApp.render({
-      url: url,
-      headers: event.headers || {},
-    });
     
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=300',
+        'Content-Type': 'text/plain',
       },
-      body: html,
+      body: `Check logs. Methods: ${Object.getOwnPropertyNames(Object.getPrototypeOf(angularApp)).join(', ')}`,
     };
   } catch (error) {
-    console.error('SSR Error:', error);
-    console.error('Stack:', error.stack);
-    
+    console.error('Error:', error);
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'text/html',
-      },
-      body: `
-        <!DOCTYPE html>
-        <html>
-          <head><title>Error</title></head>
-          <body>
-            <h1>Server Error</h1>
-            <p>${error.message}</p>
-            <pre>${error.stack}</pre>
-          </body>
-        </html>
-      `,
+      body: error.message + '\n' + error.stack,
     };
   }
 };
