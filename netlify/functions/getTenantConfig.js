@@ -127,6 +127,13 @@ async function getTenantConfigFromSheet(sheets, tenantConfigSheetId) {
 }
 
 exports.handler = async (event) => {
+
+    console.log("ENV SEEN BY FUNCTION:", {
+        GOOGLE_CLIENT_EMAIL: process.env.GOOGLE_CLIENT_EMAIL,
+        GOOGLE_PRIVATE_KEY_PRESENT: !!process.env.GOOGLE_PRIVATE_KEY,
+        MASTER_SHEET_ID: process.env.MASTER_SHEET_ID,
+    });
+
   if (event.httpMethod !== "GET" && event.httpMethod !== "POST") {
     return {
       statusCode: 405,
