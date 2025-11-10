@@ -17,7 +17,6 @@ const REQUIRED_FIELDS = [
   "post_submit_message",
   "business_phone",
   "business_address_1",
-  "business_address_2",
   "business_city",
   "business_state",
   "business_zip",
@@ -176,9 +175,16 @@ async function getTenantConfigFromSheet(sheets, tenantConfigSheetId) {
   const rows = res.data.values || [];
   const config = {};
 
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     const key = (row[0] || "").trim();
     const val = row[1] || "";
+
+    // skip header-like row
+    if (i === 0 && key.toLowerCase() === "key") {
+      continue;
+    }
+
     if (key) {
       config[key] = val;
     }
