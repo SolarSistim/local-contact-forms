@@ -2,9 +2,21 @@
 require("dotenv").config();
 const { google } = require("googleapis");
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*", // or set to your domain later
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+};
+
+function normalizeTenantId(id) {
+  return (id || "").trim().replace(/_/g, "-");
+}
+
 async function getSheetsClient() {
   if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-    throw new Error("Google credentials not set");
+    const err = new Error("Google credentials not set");
+    err.code = "CONFIG_MISSING";
+    throw err;
   }
 
   const auth = new google.auth.GoogleAuth({
@@ -18,13 +30,6 @@ async function getSheetsClient() {
   return google.sheets({ version: "v4", auth });
 }
 
-/**
- * Figure out which tab to read in the master sheet.
- * Priority:
- * 1. process.env.MASTER_SHEET_TAB
- * 2. a sheet literally named "tenants_master_sheet"
- * 3. the first sheet in the spreadsheet
- */
 async function getMasterTabName(sheets, masterSheetId) {
   const meta = await sheets.spreadsheets.get({
     spreadsheetId: masterSheetId,
@@ -32,12 +37,10 @@ async function getMasterTabName(sheets, masterSheetId) {
 
   const sheetsMeta = meta.data.sheets || [];
 
-  // 1) env override
   if (process.env.MASTER_SHEET_TAB) {
     return process.env.MASTER_SHEET_TAB;
   }
 
-  // 2) look for one actually named tenants_master_sheet
   const explicit = sheetsMeta.find(
     (s) => s.properties && s.properties.title === "tenants_master_sheet"
   );
@@ -45,23 +48,21 @@ async function getMasterTabName(sheets, masterSheetId) {
     return "tenants_master_sheet";
   }
 
-  // 3) fallback to first sheet
   if (sheetsMeta.length > 0) {
     return sheetsMeta[0].properties.title;
   }
 
-  throw new Error("Master sheet has no tabs");
+  const err = new Error("Master sheet has no tabs");
+  err.code = "MASTER_EMPTY";
+  throw err;
 }
 
-/**
- * Read the master sheet and find the row matching tenantId.
- * Expected columns (header row):
- *  tenant_id | tenant_name | config_sheet_id | status
- */
-async function getTenantRowFromMaster(sheets, tenantId) {
+async function getTenantRowFromMaster(sheets, tenantIdRaw) {
   const masterSheetId = process.env.MASTER_SHEET_ID;
   if (!masterSheetId) {
-    throw new Error("MASTER_SHEET_ID not set");
+    const err = new Error("MASTER_SHEET_ID not set");
+    err.code = "CONFIG_MISSING";
+    throw err;
   }
 
   const tabName = await getMasterTabName(sheets, masterSheetId);
@@ -73,8 +74,12 @@ async function getTenantRowFromMaster(sheets, tenantId) {
 
   const rows = res.data.values || [];
   if (!rows.length) {
-    throw new Error("Master sheet has no rows");
+    const err = new Error("Master sheet has no rows");
+    err.code = "MASTER_EMPTY";
+    throw err;
   }
+
+  const tenantId = normalizeTenantId(tenantIdRaw);
 
   const header = rows[0];
   const tenantIdIdx = header.indexOf("tenant_id");
@@ -82,18 +87,23 @@ async function getTenantRowFromMaster(sheets, tenantId) {
   const statusIdx = header.indexOf("status");
 
   if (tenantIdIdx === -1 || configSheetIdIdx === -1) {
-    throw new Error(
+    const err = new Error(
       `Master sheet missing tenant_id or config_sheet_id columns in tab "${tabName}"`
     );
+    err.code = "MASTER_BAD_COLUMNS";
+    throw err;
   }
 
   const match = rows.find((r, i) => {
     if (i === 0) return false;
-    return (r[tenantIdIdx] || "").trim() === tenantId;
+    const sheetTenantId = normalizeTenantId(r[tenantIdIdx] || "");
+    return sheetTenantId === tenantId;
   });
 
   if (!match) {
-    throw new Error(`Tenant ${tenantId} not found in master sheet`);
+    const err = new Error(`Tenant ${tenantIdRaw} not found in master sheet`);
+    err.code = "TENANT_NOT_FOUND";
+    throw err;
   }
 
   return {
@@ -103,9 +113,6 @@ async function getTenantRowFromMaster(sheets, tenantId) {
   };
 }
 
-/**
- * Tenant sheet is already key/value in A:B
- */
 async function getTenantConfigFromSheet(sheets, tenantConfigSheetId) {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: tenantConfigSheetId,
@@ -127,18 +134,20 @@ async function getTenantConfigFromSheet(sheets, tenantConfigSheetId) {
 }
 
 exports.handler = async (event) => {
-
-    console.log("ENV SEEN BY FUNCTION:", {
-        GOOGLE_CLIENT_EMAIL: process.env.GOOGLE_CLIENT_EMAIL,
-        GMAIL_USER: process.env.GMAIL_USER,
-        GOOGLE_PRIVATE_KEY_PRESENT: !!process.env.GOOGLE_PRIVATE_KEY,
-        MASTER_SHEET_ID: process.env.MASTER_SHEET_ID,
-    });
+  // CORS preflight
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: "OK",
+    };
+  }
 
   if (event.httpMethod !== "GET" && event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      body: JSON.stringify({ success: false, error: "Method not allowed" }),
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ success: false, code: "METHOD_NOT_ALLOWED", error: "Method not allowed" }),
     };
   }
 
@@ -149,21 +158,27 @@ exports.handler = async (event) => {
     try {
       const body = JSON.parse(event.body || "{}");
       tenantId = body.tenantId;
-    } catch (e) {}
+    } catch (e) {
+      // bad JSON
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ success: false, code: "BAD_JSON", error: "Invalid JSON body" }),
+      };
+    }
   }
 
   if (!tenantId) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ success: false, error: "tenantId is required" }),
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ success: false, code: "MISSING_TENANT", error: "tenantId is required" }),
     };
   }
 
   try {
     const sheets = await getSheetsClient();
-
     const masterInfo = await getTenantRowFromMaster(sheets, tenantId);
-
     const tenantConfig = await getTenantConfigFromSheet(
       sheets,
       masterInfo.configSheetId
@@ -177,13 +192,22 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ success: true, config: combined }),
     };
   } catch (err) {
     console.error("getTenantConfig error:", err.message);
+
+    // 404 for missing tenant, 500 for everything else
+    const isNotFound = err.code === "TENANT_NOT_FOUND";
     return {
-      statusCode: 500,
-      body: JSON.stringify({ success: false, error: err.message }),
+      statusCode: isNotFound ? 404 : 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        success: false,
+        code: err.code || "SERVER_ERROR",
+        error: err.message,
+      }),
     };
   }
 };

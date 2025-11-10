@@ -3,12 +3,20 @@ require("dotenv").config();
 const { google } = require("googleapis");
 const nodemailer = require("nodemailer");
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST,OPTIONS",
+};
+
 function getGmailTransport() {
   const gmailUser = process.env.GMAIL_USER;
   const gmailPass = process.env.GMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
 
   if (!gmailUser || !gmailPass) {
-    throw new Error("Gmail credentials not set (GMAIL_USER + GMAIL_PASS or GMAIL_APP_PASSWORD).");
+    const err = new Error("Gmail credentials not set (GMAIL_USER + GMAIL_PASS or GMAIL_APP_PASSWORD).");
+    err.code = "EMAIL_CONFIG_MISSING";
+    throw err;
   }
 
   return nodemailer.createTransport({
@@ -36,10 +44,19 @@ async function notifyAdminOnError(subject, message) {
 }
 
 exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: "OK",
+    };
+  }
+
   if (event.httpMethod && event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      body: JSON.stringify({ success: false, error: "Method not allowed" }),
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ success: false, code: "METHOD_NOT_ALLOWED", error: "Method not allowed" }),
     };
   }
 
@@ -49,7 +66,8 @@ exports.handler = async (event) => {
   } catch (err) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ success: false, error: "Invalid JSON body" }),
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ success: false, code: "BAD_JSON", error: "Invalid JSON body" }),
     };
   }
 
@@ -60,7 +78,8 @@ exports.handler = async (event) => {
     );
     return {
       statusCode: 500,
-      body: JSON.stringify({ success: false, error: "Server not configured" }),
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ success: false, code: "CONFIG_MISSING", error: "Server not configured" }),
     };
   }
 
@@ -71,7 +90,8 @@ exports.handler = async (event) => {
     );
     return {
       statusCode: 500,
-      body: JSON.stringify({ success: false, error: "Sheet not configured" }),
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ success: false, code: "SHEET_NOT_CONFIGURED", error: "Sheet not configured" }),
     };
   }
 
@@ -89,7 +109,6 @@ exports.handler = async (event) => {
 
     const sheets = google.sheets({ version: "v4", auth });
 
-    // build row
     const row = [
       new Date().toISOString(),
       body.firstName || "",
@@ -103,40 +122,53 @@ exports.handler = async (event) => {
     const spreadsheetId = process.env.TEST_SHEET_ID;
     const sheetName = "submissions";
 
-    // 1) insert a new row at index 1 (i.e. row 2, assuming row 1 is headers)
-    // if you have NO header row and want to insert at very top, change startIndex/endIndex to 0
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        requests: [
-          {
-            insertDimension: {
-              range: {
-                sheetId: null, // null works if we address by sheet name below
-                dimension: "ROWS",
-                startIndex: 1, // insert at row 2
-                endIndex: 2,
+    try {
+      // try your original "insert row then update" approach
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              insertDimension: {
+                range: {
+                  sheetId: null,
+                  dimension: "ROWS",
+                  startIndex: 1,
+                  endIndex: 2,
+                },
+                inheritFromBefore: false,
               },
-              inheritFromBefore: false,
             },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      });
 
-    // 2) write the values into the newly inserted row (row 2)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `${sheetName}!A2`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [row],
-      },
-    });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetName}!A2`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [row],
+        },
+      });
 
-    sheetOk = true;
+      sheetOk = true;
+    } catch (insertErr) {
+      console.error("Row insert failed, trying append:", insertErr.message);
+      // fallback to simple append at end
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${sheetName}!A:Z`,
+        valueInputOption: "USER_ENTERED",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: {
+          values: [row],
+        },
+      });
+      sheetOk = true;
+    }
 
-    // send notification email (same as before)
+    // notification email
     try {
       const transporter = getGmailTransport();
       await transporter.sendMail({
@@ -157,6 +189,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
+      headers: CORS_HEADERS,
       body: JSON.stringify({
         success: true,
         sheet: sheetOk,
@@ -173,8 +206,10 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 500,
+      headers: CORS_HEADERS,
       body: JSON.stringify({
         success: false,
+        code: "SERVER_ERROR",
         error: err.message,
       }),
     };
