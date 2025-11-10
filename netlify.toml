@@ -1,15 +1,19 @@
 [build]
-  # Build the Angular app that lives in /frontend
   command = "cd frontend && npm install && npm run build"
-  # This is where Angular outputs by default: dist/<project-name>
-  publish = "frontend/dist/frontend"
-  # Your Netlify functions now live under /backend
+  publish = "frontend/dist/frontend/browser"
   functions = "backend/netlify/functions"
 
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["frontend/dist/frontend/server/**"]
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/render"
+  status = 200
+  force = true
+
 [dev]
-  # Where your functions live during `netlify dev`
   functions = "backend/netlify/functions"
-  # Netlify’s proxy port
   port = 8888
-  # Your Angular dev server (ng serve) will run on 4200
   targetPort = 4200

@@ -2,9 +2,10 @@
   "name": "frontend",
   "version": "0.0.0",
   "scripts": {
-    "ng": "ng",
+    "ng": "ng build",
     "start": "ng serve",
     "build": "ng build",
+    "postbuild": "xcopy /E /I /Y dist\\frontend\\server ..\\backend\\netlify\\functions\\server",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:frontend": "node dist/frontend/server/server.mjs"
@@ -29,6 +30,7 @@
     "@angular/platform-server": "^20.0.0",
     "@angular/router": "^20.0.0",
     "@angular/ssr": "^20.0.4",
+    "@netlify/angular-runtime": "^3.0.1",
     "express": "^5.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
