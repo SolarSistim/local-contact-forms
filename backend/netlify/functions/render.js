@@ -5,54 +5,24 @@ exports.handler = async (event, context) => {
     
     // Dynamic import of the Angular server
     const serverModule = await import('file://' + serverPath);
-    const app = serverModule.default || serverModule.app;
     
-    if (typeof app !== 'function') {
-      throw new Error('Server module did not export a valid app function');
-    }
-    
-    // Build the request URL
-    const url = event.path + (event.rawQuery ? `?${event.rawQuery}` : '');
-    
-    // Create a mock request object
-    const mockRequest = {
-      url: url,
-      method: event.httpMethod || 'GET',
-      headers: event.headers || {},
-    };
-    
-    // Render the page
-    const html = await app(mockRequest);
+    // Debug: Log what's actually exported
+    console.log('Server module keys:', Object.keys(serverModule));
+    console.log('Default export type:', typeof serverModule.default);
+    console.log('App export type:', typeof serverModule.app);
     
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=300',
+        'Content-Type': 'text/plain',
       },
-      body: html,
+      body: `Check function logs for module exports. Keys: ${Object.keys(serverModule).join(', ')}`,
     };
   } catch (error) {
-    console.error('SSR Error:', error);
-    console.error('Stack:', error.stack);
-    
-    // Return a user-friendly error page
+    console.error('Error:', error);
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'text/html',
-      },
-      body: `
-        <!DOCTYPE html>
-        <html>
-          <head><title>Error</title></head>
-          <body>
-            <h1>Server Error</h1>
-            <p>The application failed to render.</p>
-            <pre>${error.message}</pre>
-          </body>
-        </html>
-      `,
+      body: error.message,
     };
   }
 };
