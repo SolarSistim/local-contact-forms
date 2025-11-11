@@ -7,12 +7,13 @@ let cachedHtml = null;
 function getIndexHtml() {
   if (cachedHtml) return cachedHtml;
 
-  // Try to load the built index.html from the browser distribution
+  // Try to load the built index.html
+  // In Netlify, included_files are bundled with the function
   const indexPaths = [
-    // Production: from the published browser files
-    path.join(__dirname, '..', '..', '..', 'frontend', 'dist', 'frontend', 'browser', 'index.html'),
-    // Local development: relative to functions
+    // Netlify production: included in function bundle
     path.join(__dirname, 'index.html'),
+    // Local development: from the built dist folder
+    path.join(__dirname, '..', '..', '..', 'frontend', 'dist', 'frontend', 'browser', 'index.html'),
   ];
 
   for (const indexPath of indexPaths) {

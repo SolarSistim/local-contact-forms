@@ -5,7 +5,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["backend/netlify/functions/server/**/*"]
+  included_files = ["backend/netlify/functions/server/**/*", "frontend/dist/frontend/browser/index.html"]
 
 [[redirects]]
   from = "/*"
