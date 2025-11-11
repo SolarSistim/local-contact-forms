@@ -16,12 +16,14 @@ import {
 export class ApiService {
   private apiBaseUrl = environment.apiBaseUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    console.log('API Base URL:', this.apiBaseUrl);
+  }
 
   getTenantConfig(tenantId: string): Observable<TenantConfigResponse> {
-    return this.http.get<TenantConfigResponse>(
-      `${this.apiBaseUrl}/getTenantConfig?tenantId=${encodeURIComponent(tenantId)}`
-    );
+    const url = `${this.apiBaseUrl}/getTenantConfig?tenantId=${encodeURIComponent(tenantId)}`;
+    console.log('Fetching tenant config from:', url);
+    return this.http.get<TenantConfigResponse>(url);
   }
 
   submitForm(tenantId: string, formData: FormSubmission): Observable<FormSubmissionResponse> {
