@@ -83,10 +83,13 @@ exports.handler = async (event) => {
     };
   }
 
-  if (!process.env.TEST_SHEET_ID) {
+  // Use submissionsSheetId from body (preferred), fallback to TEST_SHEET_ID (legacy)
+  const submissionsSheetId = body.submissionsSheetId || process.env.TEST_SHEET_ID;
+
+  if (!submissionsSheetId) {
     await notifyAdminOnError(
       "LCF Error: Missing sheet ID",
-      "submitForm was called but TEST_SHEET_ID is not set."
+      "submitForm was called but submissionsSheetId and TEST_SHEET_ID are not set."
     );
     return {
       statusCode: 500,
@@ -119,7 +122,7 @@ exports.handler = async (event) => {
       body.notes || "",
     ];
 
-    const spreadsheetId = process.env.TEST_SHEET_ID;
+    const spreadsheetId = submissionsSheetId;
     const sheetName = "submissions";
 
     try {

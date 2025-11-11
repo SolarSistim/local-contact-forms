@@ -1,6 +1,7 @@
 export interface TenantConfig {
   tenantId: string;
   status: 'active' | 'inactive';
+  submissionsSheetId?: string;
   business_name: string;
   notify_on_submit: string;
   intro_text: string;
@@ -34,6 +35,7 @@ export interface FormSubmission {
   reason: string;
   notes: string;
   notifyTo?: string;
+  submissionsSheetId?: string;
 }
 
 export interface FormSubmissionResponse {

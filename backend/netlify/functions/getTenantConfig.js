@@ -137,6 +137,7 @@ async function getTenantRowFromMaster(sheets, tenantIdRaw) {
   const header = rows[0];
   const tenantIdIdx = header.indexOf("tenant_id");
   const configSheetIdIdx = header.indexOf("config_sheet_id");
+  const submissionsSheetIdIdx = header.indexOf("submissions_sheet_id");
   const statusIdx = header.indexOf("status");
 
   if (tenantIdIdx === -1 || configSheetIdIdx === -1) {
@@ -162,6 +163,7 @@ async function getTenantRowFromMaster(sheets, tenantIdRaw) {
   return {
     tenantId: match[tenantIdIdx],
     configSheetId: match[configSheetIdIdx],
+    submissionsSheetId: submissionsSheetIdIdx !== -1 ? match[submissionsSheetIdIdx] : null,
     status: statusIdx !== -1 ? match[statusIdx] : "unknown",
   };
 }
@@ -247,6 +249,7 @@ exports.handler = async (event) => {
     const combined = {
       tenantId: masterInfo.tenantId,
       status: masterInfo.status,
+      submissionsSheetId: masterInfo.submissionsSheetId,
       ...tenantConfig,
     };
 

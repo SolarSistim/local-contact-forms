@@ -87,7 +87,8 @@ export class ContactFormComponent implements OnInit {
 
     const formData = {
       ...this.form.value,
-      notifyTo: this.tenantConfig?.notify_on_submit
+      notifyTo: this.tenantConfig?.notify_on_submit,
+      submissionsSheetId: this.tenantConfig?.submissionsSheetId
     };
 
     this.apiService.submitForm(this.tenantId, formData).subscribe({
