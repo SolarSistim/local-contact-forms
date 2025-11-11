@@ -1,0 +1,140 @@
+<div class="contact-form-container">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading">
+    <p>Loading tenant information...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error">
+    <p>{{ error }}</p>
+  </div>
+
+  <!-- Success State -->
+  <div *ngIf="success && !loading" class="success">
+    <h2>Thank you!</h2>
+    <p *ngIf="tenantConfig">{{ tenantConfig.post_submit_message }}</p>
+    <button (click)="form.reset(); success = false" class="btn-reset">
+      Submit Another Message
+    </button>
+  </div>
+
+  <!-- Form State -->
+  <div *ngIf="!loading && !success && tenantConfig" class="form-wrapper">
+    <h1>{{ tenantConfig.business_name }}</h1>
+    <p class="intro-text">{{ tenantConfig.intro_text }}</p>
+
+    <!-- Tenant Info Display -->
+    <div class="tenant-info">
+      <div *ngIf="tenantConfig.business_phone" class="info-item">
+        <strong>Phone:</strong> {{ tenantConfig.business_phone }}
+      </div>
+      <div *ngIf="tenantConfig.business_address_1" class="info-item">
+        <strong>Address:</strong>
+        <div>{{ tenantConfig.business_address_1 }}</div>
+        <div *ngIf="tenantConfig.business_address_2">{{ tenantConfig.business_address_2 }}</div>
+        <div>{{ tenantConfig.business_city }}, {{ tenantConfig.business_state }} {{ tenantConfig.business_zip }}</div>
+      </div>
+      <div *ngIf="tenantConfig.business_web_url" class="info-item">
+        <strong>Website:</strong>
+        <a [href]="tenantConfig.business_web_url" target="_blank" rel="noopener noreferrer">
+          {{ tenantConfig.business_web_url }}
+        </a>
+      </div>
+    </div>
+
+    <!-- Contact Form -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="contact-form">
+      <div class="form-group">
+        <label for="firstName">First Name *</label>
+        <input
+          type="text"
+          id="firstName"
+          formControlName="firstName"
+          placeholder="Your first name"
+          [class.error]="form.get('firstName')?.invalid && form.get('firstName')?.touched"
+        />
+        <span *ngIf="form.get('firstName')?.invalid && form.get('firstName')?.touched" class="error-text">
+          First name is required
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="lastName">Last Name *</label>
+        <input
+          type="text"
+          id="lastName"
+          formControlName="lastName"
+          placeholder="Your last name"
+          [class.error]="form.get('lastName')?.invalid && form.get('lastName')?.touched"
+        />
+        <span *ngIf="form.get('lastName')?.invalid && form.get('lastName')?.touched" class="error-text">
+          Last name is required
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          placeholder="your@email.com"
+          [class.error]="form.get('email')?.invalid && form.get('email')?.touched"
+        />
+        <span *ngIf="form.get('email')?.invalid && form.get('email')?.touched" class="error-text">
+          Valid email is required
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone *</label>
+        <input
+          type="tel"
+          id="phone"
+          formControlName="phone"
+          placeholder="(555) 123-4567"
+          [class.error]="form.get('phone')?.invalid && form.get('phone')?.touched"
+        />
+        <span *ngIf="form.get('phone')?.invalid && form.get('phone')?.touched" class="error-text">
+          Phone number is required
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="reason">Reason for Contact *</label>
+        <input
+          type="text"
+          id="reason"
+          formControlName="reason"
+          placeholder="What is this regarding?"
+          [class.error]="form.get('reason')?.invalid && form.get('reason')?.touched"
+        />
+        <span *ngIf="form.get('reason')?.invalid && form.get('reason')?.touched" class="error-text">
+          Reason is required
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Message</label>
+        <textarea
+          id="notes"
+          formControlName="notes"
+          placeholder="Tell us more about your inquiry..."
+          rows="5"
+        ></textarea>
+      </div>
+
+      <div *ngIf="error" class="form-error">
+        {{ error }}
+      </div>
+
+      <button
+        type="submit"
+        [disabled]="!form.valid || submitting"
+        class="btn-submit"
+      >
+        {{ submitting ? 'Sending...' : 'Send Message' }}
+      </button>
+    </form>
+  </div>
+</div>
