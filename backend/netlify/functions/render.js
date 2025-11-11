@@ -1,38 +1,31 @@
 const fs = require('fs');
 const path = require('path');
 
-// Cache for the prerendered index.html
+// Cache for the index.html
 let cachedHtml = null;
 
-function getPrerenderedHtml() {
+function getIndexHtml() {
   if (cachedHtml) return cachedHtml;
 
-  // Get the prerendered index.html
-  const indexPath = path.join(__dirname, 'server', 'assets-chunks', 'index_html.mjs');
+  // Try to load the built index.html from the browser distribution
+  const indexPaths = [
+    // Production: from the published browser files
+    path.join(__dirname, '..', '..', '..', 'frontend', 'dist', 'frontend', 'browser', 'index.html'),
+    // Local development: relative to functions
+    path.join(__dirname, 'index.html'),
+  ];
 
-  try {
-    // For development, we'll try to load from the assets-chunks
-    // In production, Netlify's runtime will handle this differently
-    const content = fs.readFileSync(indexPath, 'utf-8');
-
-    // Extract the HTML from the module
-    // The file exports a string as default
-    const match = content.match(/export\s+default\s+["'](.+?)["']/s) ||
-                  content.match(/export\s+default\s+"([\s\S]+)"/);
-
-    if (match && match[1]) {
-      cachedHtml = match[1]
-        // Unescape newlines and other escape sequences
-        .replace(/\\n/g, '\n')
-        .replace(/\\t/g, '\t')
-        .replace(/\\r/g, '\r')
-        .replace(/\\"/g, '"')
-        .replace(/\\\//g, '/');
+  for (const indexPath of indexPaths) {
+    try {
+      const content = fs.readFileSync(indexPath, 'utf-8');
+      cachedHtml = content;
       return cachedHtml;
+    } catch (e) {
+      // Continue to next path
     }
-  } catch (e) {
-    console.error('Failed to read prerendered HTML:', e.message);
   }
+
+  console.error('Failed to read index.html from any path');
 
   // Fallback to a basic HTML structure
   return `<!DOCTYPE html>
@@ -44,15 +37,15 @@ function getPrerenderedHtml() {
   </head>
   <body>
     <app-root></app-root>
-    <script src="/main.js" type="module"></script>
+    <p>Error: Unable to load application</p>
   </body>
 </html>`;
 }
 
 exports.handler = async (event, context) => {
   try {
-    // Get the prerendered HTML
-    const html = getPrerenderedHtml();
+    // Get the index HTML
+    const html = getIndexHtml();
 
     return {
       statusCode: 200,
