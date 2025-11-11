@@ -30,6 +30,13 @@ export class ContactFormComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
       this.tenantId = params['tenantId'] || null;
+
+      // Fallback to window location search if not found in route params
+      if (!this.tenantId) {
+        const urlParams = new URLSearchParams(window.location.search);
+        this.tenantId = urlParams.get('tenantId');
+      }
+
       if (this.tenantId) {
         this.loadTenantConfig();
       } else {
