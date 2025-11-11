@@ -11,7 +11,6 @@
   from = "/*"
   to = "/.netlify/functions/render"
   status = 200
-  force = true
 
 [dev]
   functions = "backend/netlify/functions"

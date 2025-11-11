@@ -44,6 +44,16 @@ function getIndexHtml() {
 }
 
 exports.handler = async (event, context) => {
+  const path = event.path || '';
+
+  // Don't handle static assets - let Netlify serve them directly
+  if (/\.(js|css|svg|ico|png|jpg|jpeg|gif|webp|woff|woff2|ttf|eot)$/i.test(path)) {
+    return {
+      statusCode: 404,
+      body: 'Not Found'
+    };
+  }
+
   try {
     // Get the index HTML
     const html = getIndexHtml();
