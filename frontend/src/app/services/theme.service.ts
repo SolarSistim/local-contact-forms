@@ -201,7 +201,7 @@ const THEMES: Record<ThemeName, ThemeColors> = {
     buttonHoverBackground: '#4B5563',
     buttonHoverText: '#FFFFFF',
     spinnerColor: '#9CA3AF',
-    pageBackground: '#0E1116',
+    pageBackground: '#1b2029ff',
     errorColor: '#cc3333',
     successColor: '#66cc99',
     borderColor: '#2A313C'

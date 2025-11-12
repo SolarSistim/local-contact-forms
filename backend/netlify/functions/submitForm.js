@@ -28,6 +28,17 @@ function getGmailTransport() {
   });
 }
 
+function escapeHtml(text) {
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m]);
+}
+
 async function notifyAdminOnError(subject, message) {
   try {
     const transporter = getGmailTransport();
@@ -174,11 +185,77 @@ exports.handler = async (event) => {
     // notification email
     try {
       const transporter = getGmailTransport();
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+            .header h2 { margin: 0 0 10px 0; color: #2c3e50; }
+            .header p { margin: 0; color: #7f8c8d; }
+            .field { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #ecf0f1; }
+            .field:last-child { border-bottom: none; }
+            .label { font-weight: bold; color: #2c3e50; margin-bottom: 5px; }
+            .value { color: #555; word-break: break-word; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ecf0f1; text-align: center; color: #95a5a6; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2>New Contact Form Submission</h2>
+              <p>You have received a new message from your contact form.</p>
+            </div>
+
+            <div>
+              <div class="field">
+                <div class="label">First Name</div>
+                <div class="value">${escapeHtml(body.firstName || "")}</div>
+              </div>
+
+              <div class="field">
+                <div class="label">Last Name</div>
+                <div class="value">${escapeHtml(body.lastName || "")}</div>
+              </div>
+
+              <div class="field">
+                <div class="label">Email</div>
+                <div class="value"><a href="mailto:${escapeHtml(body.email || "")}">${escapeHtml(body.email || "")}</a></div>
+              </div>
+
+              <div class="field">
+                <div class="label">Phone</div>
+                <div class="value"><a href="tel:${escapeHtml(body.phone || "")}">${escapeHtml(body.phone || "")}</a></div>
+              </div>
+
+              <div class="field">
+                <div class="label">Reason for Contact</div>
+                <div class="value">${escapeHtml(body.reason || "")}</div>
+              </div>
+
+              <div class="field">
+                <div class="label">Message</div>
+                <div class="value">${escapeHtml(body.notes || "").replace(/\n/g, "<br>")}</div>
+              </div>
+            </div>
+
+            <div class="footer">
+              <p>This email was sent by Local Contact Forms</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
       await transporter.sendMail({
         from: `"Local Contact Forms" <${process.env.GMAIL_USER}>`,
         to: body.notifyTo || process.env.GMAIL_USER,
-        subject: "New contact form submission",
-        text: `New submission from ${body.firstName || ""} ${body.lastName || ""}`,
+        subject: `New contact form submission from ${body.firstName || ""} ${body.lastName || ""}`,
+        html: htmlContent,
+        text: `New submission from ${body.firstName || ""} ${body.lastName || ""}\n\nFirst Name: ${body.firstName || ""}\nLast Name: ${body.lastName || ""}\nEmail: ${body.email || ""}\nPhone: ${body.phone || ""}\nReason: ${body.reason || ""}\nMessage: ${body.notes || ""}`,
       });
       emailOk = true;
     } catch (emailErr) {

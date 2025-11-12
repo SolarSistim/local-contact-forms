@@ -14,6 +14,7 @@ import { ApiService } from '../../services/api.service';
 import { ThemeService } from '../../services/theme.service';
 import { TenantConfig } from '../../types/tenant-config';
 import { LoaderComponent } from '../loader/loader.component';
+import { MessageComponent } from '../message/message.component';
 
 @Component({
   selector: 'app-contact-form',
@@ -29,7 +30,8 @@ import { LoaderComponent } from '../loader/loader.component';
     MatSelectModule,
     MatIconModule,
     MatTooltipModule,
-    LoaderComponent
+    LoaderComponent,
+    MessageComponent
   ],
   templateUrl: './contact-form.component.html',
   styleUrl: './contact-form.component.scss'
