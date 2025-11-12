@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../services/api.service';
 import { ThemeService } from '../../services/theme.service';
 import { TenantConfig } from '../../types/tenant-config';
+import { LoaderComponent } from '../loader/loader.component';
 
 @Component({
   selector: 'app-contact-form',
@@ -27,7 +28,8 @@ import { TenantConfig } from '../../types/tenant-config';
     MatCardModule,
     MatSelectModule,
     MatIconModule,
-    MatTooltipModule
+    MatTooltipModule,
+    LoaderComponent
   ],
   templateUrl: './contact-form.component.html',
   styleUrl: './contact-form.component.scss'

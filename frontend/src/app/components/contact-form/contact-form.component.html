@@ -1,9 +1,6 @@
 <div class="material-contact-form-container">
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-card">
-    <mat-spinner [diameter]="50"></mat-spinner>
-    <p>Loading tenant information...</p>
-  </div>
+  <!-- Loading State - Full Page Loader -->
+  <app-loader *ngIf="loading" message="Loading contact form..."></app-loader>
 
   <!-- Error State -->
   <div *ngIf="error && !loading" class="error-card">
@@ -148,7 +145,7 @@
           <form [formGroup]="contactForm" (ngSubmit)="onSubmit()">
             <!-- First Name / Last Name Row -->
             <div class="form-row">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="fill">
                 <mat-label>First Name</mat-label>
                 <input matInput formControlName="firstName" placeholder="Enter your first name" required>
                 <mat-error *ngIf="contactForm.get('firstName')?.hasError('required')">
@@ -159,7 +156,7 @@
                 </mat-hint>
               </mat-form-field>
 
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="fill">
                 <mat-label>Last Name</mat-label>
                 <input matInput formControlName="lastName" placeholder="Enter your last name" required>
                 <mat-error *ngIf="contactForm.get('lastName')?.hasError('required')">
@@ -173,7 +170,7 @@
 
             <!-- Email / Phone Row -->
             <div class="form-row">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="fill">
                 <mat-label>Email</mat-label>
                 <input matInput type="email" formControlName="email" placeholder="your@email.com" required>
                 <mat-error *ngIf="contactForm.get('email')?.hasError('required')">
@@ -187,7 +184,7 @@
                 </mat-hint>
               </mat-form-field>
 
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="fill">
                 <mat-label>Phone</mat-label>
                 <input matInput type="tel" formControlName="phone" placeholder="(555) 123-4567" required>
                 <mat-error *ngIf="contactForm.get('phone')?.hasError('required')">
@@ -201,7 +198,7 @@
 
             <!-- Reason for Contact Row -->
             <div class="form-row-full">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="fill">
                 <mat-label>Reason for Contact</mat-label>
                 <mat-select formControlName="reason" required>
                   <mat-option *ngFor="let option of reasonOptions" [value]="option">
@@ -219,7 +216,7 @@
 
             <!-- Message Row -->
             <div class="form-row-full">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="fill">
                 <mat-label>Message</mat-label>
                 <textarea
                   matInput
@@ -246,6 +243,8 @@
                 color="primary"
                 type="submit"
                 [disabled]="!contactForm.valid || submitting"
+                [matTooltip]="!contactForm.valid ? 'Please complete the form before submitting' : ''"
+                [matTooltipDisabled]="contactForm.valid"
               >
                 <mat-icon *ngIf="!submitting">send</mat-icon>
                 <mat-spinner diameter="20" *ngIf="submitting" class="button-spinner"></mat-spinner>
