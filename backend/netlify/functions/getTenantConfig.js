@@ -23,7 +23,7 @@ const REQUIRED_FIELDS = [
   "theme",
 ];
 
-const ALLOWED_THEMES = ["Fern", "Lilac", "Lemoncello"];
+const ALLOWED_THEMES = ["Fern", "Lilac", "Lemoncello", "Sapphire", "Crimson", "Light", "Dark"];
 
 function validateTenantConfig(config = {}) {
   const missing = [];
