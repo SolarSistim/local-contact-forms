@@ -11,6 +11,9 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@netlify/angular-runtime@^3.0.1",
+        "npm:dotenv@^17.2.3",
+        "npm:googleapis@165",
         "npm:nodemailer@^7.0.10"
       ]
     }

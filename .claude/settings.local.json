@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(dir \"C:\\Users\\cwmpe\\Documents\\Angular Projects\\Local Contact Forms\\netlify\\functions\")"
     ],
     "deny": [],
     "ask": []
