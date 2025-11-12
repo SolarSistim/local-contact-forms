@@ -153,6 +153,9 @@
                 <mat-error *ngIf="contactForm.get('firstName')?.hasError('required')">
                   <mat-icon class="error-icon">close</mat-icon> First name is required
                 </mat-error>
+                <mat-error *ngIf="contactForm.get('firstName')?.hasError('minlength')">
+                  <mat-icon class="error-icon">close</mat-icon> First name must have at least 1 character
+                </mat-error>
                 <mat-hint *ngIf="contactForm.get('firstName')?.valid && contactForm.get('firstName')?.value" class="success-hint">
                   <mat-icon class="success-icon">check_circle</mat-icon> Validated
                 </mat-hint>
@@ -163,6 +166,9 @@
                 <input matInput formControlName="lastName" placeholder="Enter your last name" required>
                 <mat-error *ngIf="contactForm.get('lastName')?.hasError('required')">
                   <mat-icon class="error-icon">close</mat-icon> Last name is required
+                </mat-error>
+                <mat-error *ngIf="contactForm.get('lastName')?.hasError('minlength')">
+                  <mat-icon class="error-icon">close</mat-icon> Last name must have at least 1 character
                 </mat-error>
                 <mat-hint *ngIf="contactForm.get('lastName')?.valid && contactForm.get('lastName')?.value" class="success-hint">
                   <mat-icon class="success-icon">check_circle</mat-icon> Validated
@@ -178,8 +184,8 @@
                 <mat-error *ngIf="contactForm.get('email')?.hasError('required')">
                   <mat-icon class="error-icon">close</mat-icon> Email is required
                 </mat-error>
-                <mat-error *ngIf="contactForm.get('email')?.hasError('email')">
-                  <mat-icon class="error-icon">close</mat-icon> Please enter a valid email
+                <mat-error *ngIf="contactForm.get('email')?.hasError('invalidEmail')">
+                  <mat-icon class="error-icon">close</mat-icon> Please enter a valid email (e.g., name@domain.com)
                 </mat-error>
                 <mat-hint *ngIf="contactForm.get('email')?.valid && contactForm.get('email')?.value" class="success-hint">
                   <mat-icon class="success-icon">check_circle</mat-icon> Validated
@@ -191,6 +197,15 @@
                 <input matInput type="tel" formControlName="phone" placeholder="(555) 123-4567" required>
                 <mat-error *ngIf="contactForm.get('phone')?.hasError('required')">
                   <mat-icon class="error-icon">close</mat-icon> Phone number is required
+                </mat-error>
+                <mat-error *ngIf="contactForm.get('phone')?.hasError('invalidPhone')">
+                  <mat-icon class="error-icon">close</mat-icon> Phone must contain only numbers
+                </mat-error>
+                <mat-error *ngIf="contactForm.get('phone')?.hasError('phoneLength')">
+                  <mat-icon class="error-icon">close</mat-icon> Phone must be 10 digits
+                </mat-error>
+                <mat-error *ngIf="contactForm.get('phone')?.hasError('invalidFormat')">
+                  <mat-icon class="error-icon">close</mat-icon> Invalid format (e.g., (555) 123-4567)
                 </mat-error>
                 <mat-hint *ngIf="contactForm.get('phone')?.valid && contactForm.get('phone')?.value" class="success-hint">
                   <mat-icon class="success-icon">check_circle</mat-icon> Validated

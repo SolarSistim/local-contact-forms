@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -45,6 +45,75 @@ export class ContactFormComponent implements OnInit {
   error: string | null = null;
   success = false;
   tenantId: string | null = null;
+
+  // Custom Validators
+  private nameValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) {
+      return { required: true };
+    }
+    
+    // Must have at least 1 character (trim whitespace first)
+    const trimmedValue = control.value.trim();
+    if (trimmedValue.length < 1) {
+      return { minlength: { requiredLength: 1, actualLength: trimmedValue.length } };
+    }
+    
+    return null;
+  }
+
+  private phoneValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) {
+      return { required: true };
+    }
+
+    // Remove all whitespace and special characters for validation
+    const cleanedPhone = control.value.replace(/[\s\-()]/g, '');
+    
+    // Check if it contains only digits
+    if (!/^\d+$/.test(cleanedPhone)) {
+      return { invalidPhone: true };
+    }
+
+    // Must be exactly 10 digits
+    if (cleanedPhone.length !== 10) {
+      return { phoneLength: true };
+    }
+
+    // Validate against allowed formats:
+    // 8504802892
+    // (850) 480-2892
+    // 850-480-2892
+    // 850 480-2892
+    // 850 4802892
+    const phonePattern = /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}[-\s]?\d{3}[-\s]?\d{4})$/;
+    
+    if (!phonePattern.test(control.value)) {
+      return { invalidFormat: true };
+    }
+
+    return null;
+  }
+
+  private emailValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) {
+      return { required: true };
+    }
+
+    // Email pattern: emailprefix@domain.extension (extension must be at least 2 characters)
+    // This allows:
+    // - One or more characters before @
+    // - @ symbol
+    // - One or more characters for domain
+    // - . (dot)
+    // - At least 2 characters for extension
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    
+    if (!emailPattern.test(control.value)) {
+      return { invalidEmail: true };
+    }
+
+    return null;
+  }
 
   constructor(
     private fb: FormBuilder,
@@ -104,10 +173,10 @@ export class ContactFormComponent implements OnInit {
 
   initializeForm(): void {
     this.contactForm = this.fb.group({
-      firstName: ['', [Validators.required]],
-      lastName: ['', [Validators.required]],
-      email: ['', [Validators.required, Validators.email]],
-      phone: ['', [Validators.required]],
+      firstName: ['', [Validators.required, this.nameValidator]],
+      lastName: ['', [Validators.required, this.nameValidator]],
+      email: ['', [Validators.required, this.emailValidator]],
+      phone: ['', [Validators.required, this.phoneValidator]],
       reason: ['', [Validators.required]],
       message: ['', []]
     });
@@ -120,10 +189,10 @@ export class ContactFormComponent implements OnInit {
     this.error = null;
 
     const formData = {
-      firstName: this.contactForm.get('firstName')?.value,
-      lastName: this.contactForm.get('lastName')?.value,
-      email: this.contactForm.get('email')?.value,
-      phone: this.contactForm.get('phone')?.value,
+      firstName: this.contactForm.get('firstName')?.value.trim(),
+      lastName: this.contactForm.get('lastName')?.value.trim(),
+      email: this.contactForm.get('email')?.value.trim(),
+      phone: this.contactForm.get('phone')?.value.trim(),
       reason: this.contactForm.get('reason')?.value,
       notes: this.contactForm.get('message')?.value,
       notifyTo: this.tenantConfig?.notify_on_submit,
