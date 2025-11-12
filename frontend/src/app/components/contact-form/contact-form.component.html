@@ -31,12 +31,22 @@
       <div class="content-layout">
         <!-- Left Panel - Business Info (1/3) -->
         <div class="info-panel">
+          <div class="info-panel-inner">
           <h3>Get in Touch</h3>
 
           <div class="info-item" *ngIf="tenantConfig?.business_address_1">
             <mat-icon>location_on</mat-icon>
             <div>
-              <strong>Address</strong>
+              <div class="info-header">
+                <strong>Address</strong>
+                <mat-icon
+                  class="copy-icon"
+                  matTooltip="Copy Address"
+                  matTooltipPosition="above"
+                  (click)="copyAddressToClipboard()">
+                  content_copy
+                </mat-icon>
+              </div>
               <p>{{ tenantConfig.business_address_1 }}<br>
               <span *ngIf="tenantConfig.business_address_2">{{ tenantConfig.business_address_2 }}<br></span>
               {{ tenantConfig.business_city }}, {{ tenantConfig.business_state }} {{ tenantConfig.business_zip }}</p>
@@ -46,7 +56,16 @@
           <div class="info-item" *ngIf="tenantConfig?.business_phone">
             <mat-icon>phone</mat-icon>
             <div>
-              <strong>Phone</strong>
+              <div class="info-header">
+                <strong>Phone</strong>
+                <mat-icon
+                  class="copy-icon"
+                  matTooltip="Copy Phone"
+                  matTooltipPosition="above"
+                  (click)="copyToClipboard(tenantConfig?.business_phone)">
+                  content_copy
+                </mat-icon>
+              </div>
               <p><a [href]="'tel:' + tenantConfig.business_phone">{{ tenantConfig.business_phone }}</a></p>
             </div>
           </div>
@@ -54,7 +73,16 @@
           <div class="info-item" *ngIf="tenantConfig?.notify_on_submit">
             <mat-icon>email</mat-icon>
             <div>
-              <strong>Email</strong>
+              <div class="info-header">
+                <strong>Email</strong>
+                <mat-icon
+                  class="copy-icon"
+                  matTooltip="Copy Email"
+                  matTooltipPosition="above"
+                  (click)="copyToClipboard(tenantConfig?.notify_on_submit)">
+                  content_copy
+                </mat-icon>
+              </div>
               <p><a [href]="'mailto:' + tenantConfig.notify_on_submit">{{ tenantConfig.notify_on_submit }}</a></p>
             </div>
           </div>
@@ -62,10 +90,57 @@
           <div class="info-item" *ngIf="tenantConfig?.business_web_url">
             <mat-icon>language</mat-icon>
             <div>
-              <strong>Website</strong>
+              <div class="info-header">
+                <strong>Website</strong>
+                <mat-icon
+                  class="copy-icon"
+                  matTooltip="Copy Website Address"
+                  matTooltipPosition="above"
+                  (click)="copyToClipboard(tenantConfig?.business_web_url)">
+                  content_copy
+                </mat-icon>
+              </div>
               <p><a [href]="tenantConfig.business_web_url" target="_blank" rel="noopener noreferrer">{{ tenantConfig.business_web_url }}</a></p>
             </div>
           </div>
+
+          <div class="info-item" *ngIf="hasSocialMedia()">
+            <mat-icon>share</mat-icon>
+            <div>
+              <strong>Follow Us</strong>
+              <div class="social-links">
+                <a *ngIf="tenantConfig?.facebook_url" [href]="tenantConfig.facebook_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on Facebook" matTooltipPosition="above">
+                  <img src="/icons/icons8-facebook-50.png" alt="Facebook">
+                </a>
+                <a *ngIf="tenantConfig?.instagram_url" [href]="tenantConfig.instagram_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on Instagram" matTooltipPosition="above">
+                  <img src="/icons/icons8-instagram-50.png" alt="Instagram">
+                </a>
+                <a *ngIf="tenantConfig?.linkedin_url" [href]="tenantConfig.linkedin_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on LinkedIn" matTooltipPosition="above">
+                  <img src="/icons/icons8-linkedin-circled-50.png" alt="LinkedIn">
+                </a>
+                <a *ngIf="tenantConfig?.pinterest_url" [href]="tenantConfig.pinterest_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on Pinterest" matTooltipPosition="above">
+                  <img src="/icons/icons8-pinterest-50.png" alt="Pinterest">
+                </a>
+                <a *ngIf="tenantConfig?.reddit_url" [href]="tenantConfig.reddit_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on Reddit" matTooltipPosition="above">
+                  <img src="/icons/icons8-reddit-50.png" alt="Reddit">
+                </a>
+                <a *ngIf="tenantConfig?.tiktok_url" [href]="tenantConfig.tiktok_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on TikTok" matTooltipPosition="above">
+                  <img src="/icons/icons8-tiktok-50.png" alt="TikTok">
+                </a>
+                <a *ngIf="tenantConfig?.wechat_url" [href]="tenantConfig.wechat_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on WeChat" matTooltipPosition="above">
+                  <img src="/icons/icons8-wechat-50.png" alt="WeChat">
+                </a>
+                <a *ngIf="tenantConfig?.x_url" [href]="tenantConfig.x_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on X" matTooltipPosition="above">
+                  <img src="/icons/icons8-x-50.png" alt="X">
+                </a>
+                <a *ngIf="tenantConfig?.youtube_url" [href]="tenantConfig.youtube_url" target="_blank" rel="noopener noreferrer" matTooltip="Visit us on YouTube" matTooltipPosition="above">
+                  <img src="/icons/icons8-youtube-50.png" alt="YouTube">
+                </a>
+              </div>
+            </div>
+          </div>
+
+        </div>
         </div>
 
         <!-- Right Panel - Contact Form (2/3) -->
@@ -77,16 +152,22 @@
                 <mat-label>First Name</mat-label>
                 <input matInput formControlName="firstName" placeholder="Enter your first name" required>
                 <mat-error *ngIf="contactForm.get('firstName')?.hasError('required')">
-                  First name is required
+                  <mat-icon class="error-icon">close</mat-icon> First name is required
                 </mat-error>
+                <mat-hint *ngIf="contactForm.get('firstName')?.valid && contactForm.get('firstName')?.value" class="success-hint">
+                  <mat-icon class="success-icon">check_circle</mat-icon> Validated
+                </mat-hint>
               </mat-form-field>
 
               <mat-form-field appearance="outline">
                 <mat-label>Last Name</mat-label>
                 <input matInput formControlName="lastName" placeholder="Enter your last name" required>
                 <mat-error *ngIf="contactForm.get('lastName')?.hasError('required')">
-                  Last name is required
+                  <mat-icon class="error-icon">close</mat-icon> Last name is required
                 </mat-error>
+                <mat-hint *ngIf="contactForm.get('lastName')?.valid && contactForm.get('lastName')?.value" class="success-hint">
+                  <mat-icon class="success-icon">check_circle</mat-icon> Validated
+                </mat-hint>
               </mat-form-field>
             </div>
 
@@ -96,19 +177,25 @@
                 <mat-label>Email</mat-label>
                 <input matInput type="email" formControlName="email" placeholder="your@email.com" required>
                 <mat-error *ngIf="contactForm.get('email')?.hasError('required')">
-                  Email is required
+                  <mat-icon class="error-icon">close</mat-icon> Email is required
                 </mat-error>
                 <mat-error *ngIf="contactForm.get('email')?.hasError('email')">
-                  Please enter a valid email
+                  <mat-icon class="error-icon">close</mat-icon> Please enter a valid email
                 </mat-error>
+                <mat-hint *ngIf="contactForm.get('email')?.valid && contactForm.get('email')?.value" class="success-hint">
+                  <mat-icon class="success-icon">check_circle</mat-icon> Validated
+                </mat-hint>
               </mat-form-field>
 
               <mat-form-field appearance="outline">
                 <mat-label>Phone</mat-label>
                 <input matInput type="tel" formControlName="phone" placeholder="(555) 123-4567" required>
                 <mat-error *ngIf="contactForm.get('phone')?.hasError('required')">
-                  Phone number is required
+                  <mat-icon class="error-icon">close</mat-icon> Phone number is required
                 </mat-error>
+                <mat-hint *ngIf="contactForm.get('phone')?.valid && contactForm.get('phone')?.value" class="success-hint">
+                  <mat-icon class="success-icon">check_circle</mat-icon> Validated
+                </mat-hint>
               </mat-form-field>
             </div>
 
@@ -116,10 +203,17 @@
             <div class="form-row-full">
               <mat-form-field appearance="outline">
                 <mat-label>Reason for Contact</mat-label>
-                <input matInput formControlName="reason" placeholder="What is this regarding?" required>
+                <mat-select formControlName="reason" required>
+                  <mat-option *ngFor="let option of reasonOptions" [value]="option">
+                    {{ option }}
+                  </mat-option>
+                </mat-select>
                 <mat-error *ngIf="contactForm.get('reason')?.hasError('required')">
-                  Reason is required
+                  <mat-icon class="error-icon">close</mat-icon> Reason is required
                 </mat-error>
+                <mat-hint *ngIf="contactForm.get('reason')?.valid && contactForm.get('reason')?.value" class="success-hint">
+                  <mat-icon class="success-icon">check_circle</mat-icon> Validated
+                </mat-hint>
               </mat-form-field>
             </div>
 
@@ -127,12 +221,15 @@
             <div class="form-row-full">
               <mat-form-field appearance="outline">
                 <mat-label>Message</mat-label>
-                <textarea 
-                  matInput 
-                  formControlName="message" 
+                <textarea
+                  matInput
+                  formControlName="message"
                   placeholder="Tell us more about your inquiry..."
                   rows="5"
                 ></textarea>
+                <mat-hint *ngIf="contactForm.get('message')?.valid && contactForm.get('message')?.value" class="success-hint">
+                  <mat-icon class="success-icon">check_circle</mat-icon> Validated
+                </mat-hint>
               </mat-form-field>
             </div>
 
@@ -151,8 +248,9 @@
                 [disabled]="!contactForm.valid || submitting"
               >
                 <mat-icon *ngIf="!submitting">send</mat-icon>
-                <mat-spinner *ngIf="submitting" diameter="20" class="button-spinner"></mat-spinner>
-                {{ submitting ? 'Sending...' : 'Send' }}
+                <mat-spinner diameter="20" *ngIf="submitting" class="button-spinner"></mat-spinner>
+                <span class="button-text button-text-send" *ngIf="!submitting">Send</span>
+                <span class="button-text button-text-sending" *ngIf="submitting">Sending...</span>
               </button>
             </div>
           </form>

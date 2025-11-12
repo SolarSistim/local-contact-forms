@@ -15,8 +15,18 @@ export interface TenantConfig {
   business_state: string;
   business_zip: string;
   business_web_url: string;
-  theme: 'Light' | 'Dark' | 'Tangerine Orange' | 'Jungle Green' | 'Lemon Yellow' | 'Ocean Blue' | 'Fury Red';
+  theme: 'Fern' | 'Lilac' | 'Lemoncello' | 'Sapphire' | 'Crimson' | 'Light' | 'Dark';
   logo: string;
+  reason_for_contact?: string;
+  facebook_url?: string;
+  instagram_url?: string;
+  linkedin_url?: string;
+  pinterest_url?: string;
+  reddit_url?: string;
+  tiktok_url?: string;
+  wechat_url?: string;
+  x_url?: string;
+  youtube_url?: string;
 }
 
 export interface TenantConfigResponse {
