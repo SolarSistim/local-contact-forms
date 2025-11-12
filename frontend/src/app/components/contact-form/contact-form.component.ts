@@ -63,9 +63,6 @@ export class ContactFormComponent implements OnInit {
 
       if (this.tenantId) {
         this.loadTenantConfig();
-      } else {
-        this.error = 'Tenant ID is required';
-        this.loading = false;
       }
     });
 
