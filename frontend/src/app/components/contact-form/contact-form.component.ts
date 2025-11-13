@@ -15,6 +15,7 @@ import { ThemeService } from '../../services/theme.service';
 import { TenantConfig } from '../../types/tenant-config';
 import { LoaderComponent } from '../loader/loader.component';
 import { MessageComponent } from '../message/message.component';
+import { MatMenuModule } from '@angular/material/menu';
 
 @Component({
   selector: 'app-contact-form',
@@ -31,7 +32,8 @@ import { MessageComponent } from '../message/message.component';
     MatIconModule,
     MatTooltipModule,
     LoaderComponent,
-    MessageComponent
+    MessageComponent,
+    MatMenuModule
   ],
   templateUrl: './contact-form.component.html',
   styleUrl: './contact-form.component.scss'

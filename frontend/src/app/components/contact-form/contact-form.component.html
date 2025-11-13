@@ -19,7 +19,7 @@
   ></app-message>
 
   <!-- Form State -->
-  <mat-card *ngIf="!loading && !success && tenantConfig">
+  <mat-card *ngIf="!loading && !success && tenantConfig" class="parent-card-container">
     <!-- Title and Subtitle Section -->
     <mat-card-header class="header-section">
       <mat-card-title>{{ tenantConfig.business_name }}</mat-card-title>
@@ -275,3 +275,30 @@
     </mat-card-content>
   </mat-card>
 </div>
+
+<!-- Sticky Footer -->
+<footer class="sticky-footer">
+  <div class="footer-content">
+    <span>Copyright 2025 © <a href="https://localcontactforms.com" target="_blank" rel="noopener noreferrer">LocalContactForms.com</a></span>
+    
+    <!-- Desktop separators and links -->
+    <span class="separator desktop-only">|</span>
+    <span class="desktop-only">Terms of Service</span>
+    <span class="separator desktop-only">|</span>
+    <span class="desktop-only">Privacy Policy</span>
+    <span class="separator desktop-only">|</span>
+    <span class="desktop-only">ADA Statement</span>
+    
+    <!-- Mobile menu button -->
+    <button class="mobile-menu-button" [matMenuTriggerFor]="footerMenu" mat-icon-button>
+      <mat-icon>keyboard_arrow_up</mat-icon>
+    </button>
+  </div>
+</footer>
+
+<!-- Material Menu -->
+<mat-menu #footerMenu="matMenu" yPosition="above">
+  <button mat-menu-item>Terms of Service</button>
+  <button mat-menu-item>Privacy Policy</button>
+  <button mat-menu-item>ADA Statement</button>
+</mat-menu>
