@@ -211,7 +211,7 @@ export class ContactFormComponent implements OnInit {
       submissionsSheetId: this.tenantConfig?.submissionsSheetId
     };
 
-    this.apiService.submitForm(this.tenantId, formData).subscribe({
+    this.apiService.submitForm(formData).subscribe({
       next: (response) => {
         if (response.success) {
           this.success = true;

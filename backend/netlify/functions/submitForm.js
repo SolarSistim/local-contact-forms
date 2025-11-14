@@ -3,11 +3,130 @@ require("dotenv").config();
 const { google } = require("googleapis");
 const nodemailer = require("nodemailer");
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "POST,OPTIONS",
-};
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://localcontactforms.com',
+  'https://www.localcontactforms.com',
+  'http://localhost:8888',
+  'http://localhost:4200'
+];
+
+// Helper function to get CORS headers based on request origin
+function getCorsHeaders(requestOrigin) {
+  const origin = ALLOWED_ORIGINS.includes(requestOrigin) 
+    ? requestOrigin 
+    : ALLOWED_ORIGINS[0];
+  
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+  };
+}
+
+// Simple in-memory rate limiting
+const submitRateLimits = new Map();
+
+function checkSubmitRateLimit(ip) {
+  const now = Date.now();
+  const record = submitRateLimits.get(ip) || { count: 0, resetTime: now + 3600000 }; // 1 hour
+  
+  if (now > record.resetTime) {
+    record.count = 1;
+    record.resetTime = now + 3600000;
+  } else {
+    record.count++;
+  }
+  
+  submitRateLimits.set(ip, record);
+  return record.count <= 10; // 10 submissions per IP per hour
+}
+
+// Clean up old rate limit entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of submitRateLimits.entries()) {
+    if (now > record.resetTime) {
+      submitRateLimits.delete(ip);
+    }
+  }
+}, 3600000); // Clean up every hour
+
+function validateSubmission(body) {
+  // Required fields - match frontend requirements
+  if (!body.firstName || !body.lastName || !body.email || !body.phone || !body.reason) {
+    const missing = [];
+    if (!body.firstName) missing.push('firstName');
+    if (!body.lastName) missing.push('lastName');
+    if (!body.email) missing.push('email');
+    if (!body.phone) missing.push('phone');
+    if (!body.reason) missing.push('reason');
+    
+    return { 
+      valid: false, 
+      error: `Required fields missing: ${missing.join(', ')}` 
+    };
+  }
+  
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(body.email)) {
+    return { valid: false, error: "Invalid email format" };
+  }
+
+  // Phone validation - matches frontend exactly
+  const cleanedPhone = body.phone.replace(/[\s\-()]/g, '');
+  
+  // Check if it contains only digits
+  if (!/^\d+$/.test(cleanedPhone)) {
+    return { valid: false, error: "Phone number must contain only digits" };
+  }
+
+  // Must be exactly 10 digits
+  if (cleanedPhone.length !== 10) {
+    return { valid: false, error: "Phone number must be exactly 10 digits" };
+  }
+
+  // Validate against allowed formats:
+  // 8504802892, (850) 480-2892, 850-480-2892, 850 480-2892, 850 4802892
+  const phonePattern = /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}[-\s]?\d{3}[-\s]?\d{4})$/;
+  if (!phonePattern.test(body.phone)) {
+    return { valid: false, error: "Invalid phone number format" };
+  }
+  
+  // Length checks to prevent abuse
+  if (body.firstName && body.firstName.length > 100) {
+    return { valid: false, error: "First name too long" };
+  }
+  
+  if (body.lastName && body.lastName.length > 100) {
+    return { valid: false, error: "Last name too long" };
+  }
+  
+  if (body.notes && body.notes.length > 5000) {
+    return { valid: false, error: "Message too long (max 5000 characters)" };
+  }
+  
+  if (body.phone && body.phone.length > 20) {
+    return { valid: false, error: "Phone number too long" };
+  }
+  
+  if (body.reason && body.reason.length > 200) {
+    return { valid: false, error: "Reason too long" };
+  }
+  
+  // Validate submissionsSheetId format (Google Sheet IDs are alphanumeric)
+  if (body.submissionsSheetId && !/^[a-zA-Z0-9_-]{40,}$/.test(body.submissionsSheetId)) {
+    return { valid: false, error: "Invalid sheet ID format" };
+  }
+  
+  // Validate notifyTo email if provided
+  if (body.notifyTo && !emailRegex.test(body.notifyTo)) {
+    return { valid: false, error: "Invalid notification email format" };
+  }
+  
+  return { valid: true };
+}
 
 function getGmailTransport() {
   const gmailUser = process.env.GMAIL_USER;
@@ -54,11 +173,13 @@ async function notifyAdminOnError(subject, message) {
   }
 }
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
+  const corsHeaders = getCorsHeaders(event.headers.origin);
+
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: "OK",
     };
   }
@@ -66,8 +187,23 @@ exports.handler = async (event) => {
   if (event.httpMethod && event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: JSON.stringify({ success: false, code: "METHOD_NOT_ALLOWED", error: "Method not allowed" }),
+    };
+  }
+
+  // Rate limiting by IP
+  const ip = event.headers['x-forwarded-for'] || context.ip;
+  if (!checkSubmitRateLimit(ip)) {
+    console.warn(`Rate limit exceeded for IP: ${ip}`);
+    return {
+      statusCode: 429,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: false, 
+        code: "RATE_LIMIT_EXCEEDED", 
+        error: "Too many submissions. Please try again later." 
+      }),
     };
   }
 
@@ -77,8 +213,22 @@ exports.handler = async (event) => {
   } catch (err) {
     return {
       statusCode: 400,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: JSON.stringify({ success: false, code: "BAD_JSON", error: "Invalid JSON body" }),
+    };
+  }
+
+  // Validate submission data
+  const validation = validateSubmission(body);
+  if (!validation.valid) {
+    return {
+      statusCode: 400,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: false, 
+        code: "VALIDATION_FAILED", 
+        error: validation.error 
+      }),
     };
   }
 
@@ -89,7 +239,7 @@ exports.handler = async (event) => {
     );
     return {
       statusCode: 500,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: JSON.stringify({ success: false, code: "CONFIG_MISSING", error: "Server not configured" }),
     };
   }
@@ -104,7 +254,7 @@ exports.handler = async (event) => {
     );
     return {
       statusCode: 500,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: JSON.stringify({ success: false, code: "SHEET_NOT_CONFIGURED", error: "Sheet not configured" }),
     };
   }
@@ -269,7 +419,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: JSON.stringify({
         success: true,
         sheet: sheetOk,
@@ -286,7 +436,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 500,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: JSON.stringify({
         success: false,
         code: "SERVER_ERROR",

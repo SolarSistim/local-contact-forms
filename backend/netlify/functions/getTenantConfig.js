@@ -2,11 +2,57 @@
 require("dotenv").config();
 const { google } = require("googleapis");
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*", // or set to your domain later
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-};
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://localcontactforms.com',
+  'https://www.localcontactforms.com',
+  'http://localhost:8888',
+  'http://localhost:4200'
+];
+
+// Helper function to get CORS headers based on request origin
+function getCorsHeaders(requestOrigin) {
+  const origin = ALLOWED_ORIGINS.includes(requestOrigin) 
+    ? requestOrigin 
+    : ALLOWED_ORIGINS[0];
+  
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET,OPTIONS",
+  };
+}
+
+// Fields that are safe to return to the public
+const PUBLIC_FIELDS = [
+  'business_name',
+  'intro_text',
+  'meta_description',
+  'meta_keywords',
+  'post_submit_message',
+  'business_phone',
+  'business_address_1',
+  'business_address_2',
+  'business_city',
+  'business_state',
+  'business_zip',
+  'business_web_url',
+  'theme',
+  'logo',
+  'reason_for_contact',
+  'facebook_url',
+  'instagram_url',
+  'linkedin_url',
+  'pinterest_url',
+  'reddit_url',
+  'tiktok_url',
+  'wechat_url',
+  'x_url',
+  'youtube_url',
+  'submissionsSheetId', // Needed by submitForm
+  'tenantId',
+  'status'
+];
 
 const REQUIRED_FIELDS = [
   "business_name",
@@ -196,45 +242,42 @@ async function getTenantConfigFromSheet(sheets, tenantConfigSheetId) {
 }
 
 exports.handler = async (event) => {
+  const corsHeaders = getCorsHeaders(event.headers.origin);
+
   // CORS preflight
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: "OK",
     };
   }
 
-  if (event.httpMethod !== "GET" && event.httpMethod !== "POST") {
+  // Only allow GET method
+  if (event.httpMethod !== "GET") {
     return {
       statusCode: 405,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ success: false, code: "METHOD_NOT_ALLOWED", error: "Method not allowed" }),
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: false, 
+        code: "METHOD_NOT_ALLOWED", 
+        error: "Only GET method is allowed" 
+      }),
     };
   }
 
-  let tenantId =
-    (event.queryStringParameters && event.queryStringParameters.tenantId) || null;
-
-  if (!tenantId && event.httpMethod === "POST") {
-    try {
-      const body = JSON.parse(event.body || "{}");
-      tenantId = body.tenantId;
-    } catch (e) {
-      // bad JSON
-      return {
-        statusCode: 400,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ success: false, code: "BAD_JSON", error: "Invalid JSON body" }),
-      };
-    }
-  }
+  // Get tenantId from query parameters only
+  const tenantId = event.queryStringParameters?.tenantId || null;
 
   if (!tenantId) {
     return {
       statusCode: 400,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ success: false, code: "MISSING_TENANT", error: "tenantId is required" }),
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: false, 
+        code: "MISSING_TENANT", 
+        error: "tenantId is required" 
+      }),
     };
   }
 
@@ -253,14 +296,23 @@ exports.handler = async (event) => {
       ...tenantConfig,
     };
 
+    // Validate the full config (including notify_on_submit)
     const validation = validateTenantConfig(combined);
+
+    // Filter to only return public fields (removes notify_on_submit)
+    const publicConfig = {};
+    for (const field of PUBLIC_FIELDS) {
+      if (combined[field] !== undefined) {
+        publicConfig[field] = combined[field];
+      }
+    }
 
     return {
       statusCode: 200,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: JSON.stringify({
         success: true,
-        config: combined,
+        config: publicConfig,
         valid: validation.isValid,
         missingRequiredFields: validation.missing,
         validationErrors: validation.errors,
@@ -273,7 +325,7 @@ exports.handler = async (event) => {
     const isNotFound = err.code === "TENANT_NOT_FOUND";
     return {
       statusCode: isNotFound ? 404 : 500,
-      headers: CORS_HEADERS,
+      headers: corsHeaders,
       body: JSON.stringify({
         success: false,
         code: err.code || "SERVER_ERROR",

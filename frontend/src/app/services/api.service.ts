@@ -5,9 +5,7 @@ import { environment } from '../../environments/environment';
 import {
   TenantConfigResponse,
   FormSubmissionResponse,
-  EmailResponse,
-  FormSubmission,
-  EmailRequest
+  FormSubmission
 } from '../types/tenant-config';
 
 @Injectable({
@@ -26,25 +24,10 @@ export class ApiService {
     return this.http.get<TenantConfigResponse>(url);
   }
 
-  submitForm(tenantId: string, formData: FormSubmission): Observable<FormSubmissionResponse> {
-    const payload = {
-      ...formData,
-      tenantId
-    };
+  submitForm(formData: FormSubmission): Observable<FormSubmissionResponse> {
     return this.http.post<FormSubmissionResponse>(
-      `${this.apiBaseUrl}/submitForm?tenantId=${encodeURIComponent(tenantId)}`,
-      payload
-    );
-  }
-
-  sendEmail(tenantId: string, emailData: EmailRequest): Observable<EmailResponse> {
-    const payload = {
-      ...emailData,
-      tenantId
-    };
-    return this.http.post<EmailResponse>(
-      `${this.apiBaseUrl}/sendEmail?tenantId=${encodeURIComponent(tenantId)}`,
-      payload
+      `${this.apiBaseUrl}/submitForm`,
+      formData
     );
   }
 }
