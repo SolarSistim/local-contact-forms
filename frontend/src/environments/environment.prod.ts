@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://local-contact-forms.netlify.app/.netlify/functions'
+  apiBaseUrl: 'https://localcontactforms.com/.netlify/functions'  // FULL URL required!
 };
