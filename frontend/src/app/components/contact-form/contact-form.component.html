@@ -253,6 +253,13 @@
               {{ error }}
             </div>
 
+            <div class="recaptcha-container">
+              <div id="recaptcha-element"></div>
+              <mat-error *ngIf="contactForm.get('recaptchaToken')?.invalid && contactForm.get('recaptchaToken')?.touched">
+                Please complete the reCAPTCHA verification
+              </mat-error>
+            </div>
+
             <!-- Submit Button -->
             <div class="form-actions">
               <button

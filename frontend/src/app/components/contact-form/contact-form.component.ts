@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -23,6 +24,9 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { AdaStatement } from '../legal-stuff/ada-statement/ada-statement';
 import { PrivacyPolicy, PolicyDialogData } from '../legal-stuff/privacy-policy/privacy-policy';
 import { WebsiteTermsOfService } from '../legal-stuff/website-terms-of-service/website-terms-of-service';
+
+// Declare grecaptcha for TypeScript
+declare const grecaptcha: any;
 
 @Component({
   selector: 'app-contact-form',
@@ -46,7 +50,7 @@ import { WebsiteTermsOfService } from '../legal-stuff/website-terms-of-service/w
   templateUrl: './contact-form.component.html',
   styleUrl: './contact-form.component.scss'
 })
-export class ContactFormComponent implements OnInit {
+export class ContactFormComponent implements OnInit, OnDestroy {
 
   contactForm!: FormGroup;
   tenantConfig: TenantConfig | null = null;
@@ -56,6 +60,11 @@ export class ContactFormComponent implements OnInit {
   error: string | null = null;
   success = false;
   tenantId: string | null = null;
+
+  // reCAPTCHA configuration
+  private recaptchaSiteKey = '6LcKsAwsAAAAABbClubGJhDxBTmT7eHYUUpXDfnV';
+  private recaptchaLoaded = false;
+  private recaptchaWidgetId: number | null = null;
 
   // Custom Validators
   private nameValidator(control: AbstractControl): ValidationErrors | null {
@@ -131,7 +140,8 @@ export class ContactFormComponent implements OnInit {
     private route: ActivatedRoute,
     private apiService: ApiService,
     private themeService: ThemeService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -150,6 +160,18 @@ export class ContactFormComponent implements OnInit {
     });
 
     this.initializeForm();
+    this.loadRecaptcha();
+  }
+
+  ngOnDestroy(): void {
+    // Clean up reCAPTCHA
+    if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
+      try {
+        grecaptcha.reset(this.recaptchaWidgetId);
+      } catch (e) {
+        console.error('Error resetting reCAPTCHA:', e);
+      }
+    }
   }
 
   loadTenantConfig(): void {
@@ -190,12 +212,102 @@ export class ContactFormComponent implements OnInit {
       email: ['', [Validators.required, this.emailValidator]],
       phone: ['', [Validators.required, this.phoneValidator]],
       reason: ['', [Validators.required]],
-      message: ['', []]
+      message: ['', []],
+      recaptchaToken: ['', [Validators.required]]
     });
   }
 
+  /**
+   * Load reCAPTCHA script and render widget
+   */
+  loadRecaptcha(): void {
+    if (typeof window === 'undefined') return;
+
+    // Check if script already exists
+    if (document.getElementById('recaptcha-script')) {
+      this.renderRecaptcha();
+      return;
+    }
+
+    // Create and load the reCAPTCHA script
+    const script = document.createElement('script');
+    script.id = 'recaptcha-script';
+    script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit';
+    script.async = true;
+    script.defer = true;
+
+    // Set up the callback that will be called when reCAPTCHA loads
+    (window as any).onRecaptchaLoad = () => {
+      this.recaptchaLoaded = true;
+      this.renderRecaptcha();
+    };
+
+    document.head.appendChild(script);
+  }
+
+  /**
+   * Render the reCAPTCHA widget
+   */
+  renderRecaptcha(): void {
+    if (typeof grecaptcha === 'undefined' || !grecaptcha.render) {
+      console.error('reCAPTCHA not loaded yet');
+      return;
+    }
+
+    const element = document.getElementById('recaptcha-element');
+    if (!element) {
+      console.error('reCAPTCHA element not found');
+      return;
+    }
+
+    try {
+      this.recaptchaWidgetId = grecaptcha.render('recaptcha-element', {
+        sitekey: this.recaptchaSiteKey,
+        callback: (token: string) => this.onRecaptchaSuccess(token),
+        'expired-callback': () => this.onRecaptchaExpired(),
+        'error-callback': () => this.onRecaptchaError()
+      });
+    } catch (error) {
+      console.error('Error rendering reCAPTCHA:', error);
+    }
+  }
+
+  /**
+   * Handle successful reCAPTCHA completion
+   */
+  onRecaptchaSuccess(token: string): void {
+    this.contactForm.patchValue({ recaptchaToken: token });
+    this.contactForm.get('recaptchaToken')?.markAsTouched();
+  }
+
+  /**
+   * Handle expired reCAPTCHA
+   */
+  onRecaptchaExpired(): void {
+    this.contactForm.patchValue({ recaptchaToken: '' });
+    this.contactForm.get('recaptchaToken')?.markAsTouched();
+    console.warn('reCAPTCHA expired');
+  }
+
+  /**
+   * Handle reCAPTCHA error
+   */
+  onRecaptchaError(): void {
+    this.contactForm.patchValue({ recaptchaToken: '' });
+    this.contactForm.get('recaptchaToken')?.markAsTouched();
+    console.error('reCAPTCHA error occurred');
+  }
+
   onSubmit(): void {
-    if (!this.contactForm.valid || !this.tenantId) return;
+    // Mark all fields as touched to show validation errors
+    Object.keys(this.contactForm.controls).forEach(key => {
+      this.contactForm.get(key)?.markAsTouched();
+    });
+
+    if (!this.contactForm.valid || !this.tenantId) {
+      console.error('Form is invalid:', this.contactForm.errors);
+      return;
+    }
 
     this.submitting = true;
     this.error = null;
@@ -208,7 +320,8 @@ export class ContactFormComponent implements OnInit {
       reason: this.contactForm.get('reason')?.value,
       notes: this.contactForm.get('message')?.value,
       notifyTo: this.tenantConfig?.notify_on_submit,
-      submissionsSheetId: this.tenantConfig?.submissionsSheetId
+      submissionsSheetId: this.tenantConfig?.submissionsSheetId,
+      recaptchaToken: this.contactForm.get('recaptchaToken')?.value
     };
 
     this.apiService.submitForm(formData).subscribe({
@@ -216,16 +329,53 @@ export class ContactFormComponent implements OnInit {
         if (response.success) {
           this.success = true;
           this.contactForm.reset();
+          
+          // Reset reCAPTCHA
+          if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
+            try {
+              grecaptcha.reset(this.recaptchaWidgetId);
+            } catch (e) {
+              console.error('Error resetting reCAPTCHA:', e);
+            }
+          }
+          
           this.submitting = false;
         } else {
           this.error = 'Form submission failed. Please try again.';
           this.submitting = false;
+          
+          // Reset reCAPTCHA on error
+          if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
+            try {
+              grecaptcha.reset(this.recaptchaWidgetId);
+            } catch (e) {
+              console.error('Error resetting reCAPTCHA:', e);
+            }
+          }
         }
       },
       error: (err) => {
         console.error('Error submitting form:', err);
-        this.error = 'An error occurred while submitting the form. Please try again.';
+        
+        // Check for specific reCAPTCHA errors
+        if (err.error?.code === 'RECAPTCHA_FAILED') {
+          this.error = 'reCAPTCHA verification failed. Please try again.';
+        } else if (err.error?.code === 'RECAPTCHA_MISSING') {
+          this.error = 'Please complete the reCAPTCHA verification.';
+        } else {
+          this.error = 'An error occurred while submitting the form. Please try again.';
+        }
+        
         this.submitting = false;
+        
+        // Reset reCAPTCHA on error
+        if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
+          try {
+            grecaptcha.reset(this.recaptchaWidgetId);
+          } catch (e) {
+            console.error('Error resetting reCAPTCHA:', e);
+          }
+        }
       }
     });
   }
@@ -274,63 +424,62 @@ export class ContactFormComponent implements OnInit {
   }
 
   openPolicyDialog(type: 'terms' | 'privacy' | 'ada'): void {
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 960;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 960;
 
-  let title = '';
-  let component: any;
+    let title = '';
+    let component: any;
 
-  switch (type) {
-    case 'terms':
-      title = 'Terms of Service';
-      component = WebsiteTermsOfService;
-      break;
-    case 'privacy':
-      title = 'Privacy Policy';
-      component = PrivacyPolicy;
-      break;
-    case 'ada':
-      title = 'ADA Statement';
-      component = AdaStatement;
-      break;
+    switch (type) {
+      case 'terms':
+        title = 'Terms of Service';
+        component = WebsiteTermsOfService;
+        break;
+      case 'privacy':
+        title = 'Privacy Policy';
+        component = PrivacyPolicy;
+        break;
+      case 'ada':
+        title = 'ADA Statement';
+        component = AdaStatement;
+        break;
+    }
+
+    const data: PolicyDialogData = {
+      title,
+      type,
+      clientName: this.tenantConfig?.business_name,
+      clientWebsite: this.tenantConfig?.business_web_url,
+      clientEmail: this.tenantConfig?.notify_on_submit,
+      clientAddressLine1: this.tenantConfig?.business_address_1,
+      clientAddressLine2: this.tenantConfig?.business_address_2,
+      clientCity: this.tenantConfig?.business_city,
+      clientState: this.tenantConfig?.business_state,
+      clientZip: this.tenantConfig?.business_zip
+    };
+
+    const baseConfig = {
+      disableClose: true,
+      data,
+      panelClass: 'policy-dialog-panel' as string
+    };
+
+    if (isMobile) {
+      this.dialog.open(component, {
+        ...baseConfig,
+        width: '100vw',
+        maxWidth: '100vw',
+        height: '100vh',
+        maxHeight: '100vh',
+        position: { top: '0', left: '0' }
+      });
+    } else {
+      this.dialog.open(component, {
+        ...baseConfig,
+        width: '60vw',
+        maxWidth: '800px',
+        maxHeight: '80vh',
+        position: { top: '10vh' }
+      });
+    }
   }
-
-  const data: PolicyDialogData = {
-    title,
-    type,
-    clientName: this.tenantConfig?.business_name,
-    clientWebsite: this.tenantConfig?.business_web_url,
-    clientEmail: this.tenantConfig?.notify_on_submit,
-    clientAddressLine1: this.tenantConfig?.business_address_1,
-    clientAddressLine2: this.tenantConfig?.business_address_2,
-    clientCity: this.tenantConfig?.business_city,
-    clientState: this.tenantConfig?.business_state,
-    clientZip: this.tenantConfig?.business_zip
-  };
-
-  const baseConfig = {
-    disableClose: true,
-    data,
-    panelClass: 'policy-dialog-panel' as string
-  };
-
-if (isMobile) {
-  this.dialog.open(component, {
-    ...baseConfig,
-    width: '100vw',
-    maxWidth: '100vw',
-    height: '100vh',
-    maxHeight: '100vh',
-    position: { top: '0', left: '0' }
-  });
-} else {
-  this.dialog.open(component, {
-    ...baseConfig,
-    width: '60vw',
-    maxWidth: '800px',
-    maxHeight: '80vh',
-    position: { top: '10vh' }
-  });
-}
-}
-
 }

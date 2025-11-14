@@ -2,6 +2,7 @@
 require("dotenv").config();
 const { google } = require("googleapis");
 const nodemailer = require("nodemailer");
+const fetch = require("node-fetch");
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -52,7 +53,61 @@ setInterval(() => {
   }
 }, 3600000); // Clean up every hour
 
+/**
+ * Verify reCAPTCHA token with Google
+ * @param {string} token - The reCAPTCHA token from the frontend
+ * @param {string} remoteip - The user's IP address (optional but recommended)
+ * @returns {Promise<{success: boolean, score?: number, action?: string, challenge_ts?: string, hostname?: string, error_codes?: string[]}>}
+ */
+async function verifyRecaptcha(token, remoteip) {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+  
+  if (!secretKey) {
+    throw new Error("RECAPTCHA_SECRET_KEY not configured");
+  }
+
+  const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+  
+  const params = new URLSearchParams({
+    secret: secretKey,
+    response: token,
+  });
+
+  if (remoteip) {
+    params.append('remoteip', remoteip);
+  }
+
+  try {
+    const response = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString()
+    });
+
+    if (!response.ok) {
+      throw new Error(`reCAPTCHA verification request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('reCAPTCHA verification error:', error);
+    throw new Error(`Failed to verify reCAPTCHA: ${error.message}`);
+  }
+}
+
 function validateSubmission(body) {
+  // Check for reCAPTCHA token
+  if (!body.recaptchaToken) {
+    return {
+      valid: false,
+      error: 'reCAPTCHA token is required',
+      code: 'RECAPTCHA_MISSING'
+    };
+  }
+
   // Required fields - match frontend requirements
   if (!body.firstName || !body.lastName || !body.email || !body.phone || !body.reason) {
     const missing = [];
@@ -64,14 +119,19 @@ function validateSubmission(body) {
     
     return { 
       valid: false, 
-      error: `Required fields missing: ${missing.join(', ')}` 
+      error: `Required fields missing: ${missing.join(', ')}`,
+      code: 'VALIDATION_FAILED'
     };
   }
   
   // Email validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(body.email)) {
-    return { valid: false, error: "Invalid email format" };
+    return { 
+      valid: false, 
+      error: "Invalid email format",
+      code: 'VALIDATION_FAILED'
+    };
   }
 
   // Phone validation - matches frontend exactly
@@ -79,50 +139,90 @@ function validateSubmission(body) {
   
   // Check if it contains only digits
   if (!/^\d+$/.test(cleanedPhone)) {
-    return { valid: false, error: "Phone number must contain only digits" };
+    return { 
+      valid: false, 
+      error: "Phone number must contain only digits",
+      code: 'VALIDATION_FAILED'
+    };
   }
 
   // Must be exactly 10 digits
   if (cleanedPhone.length !== 10) {
-    return { valid: false, error: "Phone number must be exactly 10 digits" };
+    return { 
+      valid: false, 
+      error: "Phone number must be exactly 10 digits",
+      code: 'VALIDATION_FAILED'
+    };
   }
 
   // Validate against allowed formats:
   // 8504802892, (850) 480-2892, 850-480-2892, 850 480-2892, 850 4802892
   const phonePattern = /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}[-\s]?\d{3}[-\s]?\d{4})$/;
   if (!phonePattern.test(body.phone)) {
-    return { valid: false, error: "Invalid phone number format" };
+    return { 
+      valid: false, 
+      error: "Invalid phone number format",
+      code: 'VALIDATION_FAILED'
+    };
   }
   
   // Length checks to prevent abuse
   if (body.firstName && body.firstName.length > 100) {
-    return { valid: false, error: "First name too long" };
+    return { 
+      valid: false, 
+      error: "First name too long",
+      code: 'VALIDATION_FAILED'
+    };
   }
   
   if (body.lastName && body.lastName.length > 100) {
-    return { valid: false, error: "Last name too long" };
+    return { 
+      valid: false, 
+      error: "Last name too long",
+      code: 'VALIDATION_FAILED'
+    };
   }
   
   if (body.notes && body.notes.length > 5000) {
-    return { valid: false, error: "Message too long (max 5000 characters)" };
+    return { 
+      valid: false, 
+      error: "Message too long (max 5000 characters)",
+      code: 'VALIDATION_FAILED'
+    };
   }
   
   if (body.phone && body.phone.length > 20) {
-    return { valid: false, error: "Phone number too long" };
+    return { 
+      valid: false, 
+      error: "Phone number too long",
+      code: 'VALIDATION_FAILED'
+    };
   }
   
   if (body.reason && body.reason.length > 200) {
-    return { valid: false, error: "Reason too long" };
+    return { 
+      valid: false, 
+      error: "Reason too long",
+      code: 'VALIDATION_FAILED'
+    };
   }
   
   // Validate submissionsSheetId format (Google Sheet IDs are alphanumeric)
   if (body.submissionsSheetId && !/^[a-zA-Z0-9_-]{40,}$/.test(body.submissionsSheetId)) {
-    return { valid: false, error: "Invalid sheet ID format" };
+    return { 
+      valid: false, 
+      error: "Invalid sheet ID format",
+      code: 'VALIDATION_FAILED'
+    };
   }
   
   // Validate notifyTo email if provided
   if (body.notifyTo && !emailRegex.test(body.notifyTo)) {
-    return { valid: false, error: "Invalid notification email format" };
+    return { 
+      valid: false, 
+      error: "Invalid notification email format",
+      code: 'VALIDATION_FAILED'
+    };
   }
   
   return { valid: true };
@@ -188,12 +288,16 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 405,
       headers: corsHeaders,
-      body: JSON.stringify({ success: false, code: "METHOD_NOT_ALLOWED", error: "Method not allowed" }),
+      body: JSON.stringify({ 
+        success: false, 
+        code: "METHOD_NOT_ALLOWED", 
+        error: "Method not allowed" 
+      }),
     };
   }
 
   // Rate limiting by IP
-  const ip = event.headers['x-forwarded-for'] || context.ip;
+  const ip = event.headers['x-forwarded-for'] || event.headers['x-nf-client-connection-ip'] || context.ip;
   if (!checkSubmitRateLimit(ip)) {
     console.warn(`Rate limit exceeded for IP: ${ip}`);
     return {
@@ -214,11 +318,15 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ success: false, code: "BAD_JSON", error: "Invalid JSON body" }),
+      body: JSON.stringify({ 
+        success: false, 
+        code: "BAD_JSON", 
+        error: "Invalid JSON body" 
+      }),
     };
   }
 
-  // Validate submission data
+  // Validate submission data (including reCAPTCHA token presence)
   const validation = validateSubmission(body);
   if (!validation.valid) {
     return {
@@ -226,12 +334,64 @@ exports.handler = async (event, context) => {
       headers: corsHeaders,
       body: JSON.stringify({ 
         success: false, 
-        code: "VALIDATION_FAILED", 
+        code: validation.code || "VALIDATION_FAILED", 
         error: validation.error 
       }),
     };
   }
 
+  // Verify reCAPTCHA token
+  try {
+    const recaptchaResult = await verifyRecaptcha(body.recaptchaToken, ip);
+    
+    if (!recaptchaResult.success) {
+      console.warn('reCAPTCHA verification failed:', recaptchaResult['error-codes']);
+      
+      // Log specific error codes for debugging
+      const errorCodes = recaptchaResult['error-codes'] || [];
+      let errorMessage = 'reCAPTCHA verification failed';
+      
+      if (errorCodes.includes('timeout-or-duplicate')) {
+        errorMessage = 'reCAPTCHA token has expired or been used. Please try again.';
+      } else if (errorCodes.includes('invalid-input-response')) {
+        errorMessage = 'Invalid reCAPTCHA token. Please refresh and try again.';
+      }
+      
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ 
+          success: false, 
+          code: "RECAPTCHA_FAILED", 
+          error: errorMessage
+        }),
+      };
+    }
+
+    // Optional: Log successful verification for monitoring
+    console.log('reCAPTCHA verified successfully for IP:', ip);
+
+  } catch (recaptchaError) {
+    console.error('reCAPTCHA verification error:', recaptchaError);
+    
+    // Notify admin of reCAPTCHA issues
+    await notifyAdminOnError(
+      "LCF Error: reCAPTCHA Verification Failed",
+      `reCAPTCHA verification encountered an error:\n${recaptchaError.message}\n\nIP: ${ip}`
+    );
+    
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: false, 
+        code: "RECAPTCHA_ERROR", 
+        error: "Unable to verify reCAPTCHA. Please try again later." 
+      }),
+    };
+  }
+
+  // Check for Google credentials
   if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
     await notifyAdminOnError(
       "LCF Error: Missing Google creds",
@@ -240,7 +400,11 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ success: false, code: "CONFIG_MISSING", error: "Server not configured" }),
+      body: JSON.stringify({ 
+        success: false, 
+        code: "CONFIG_MISSING", 
+        error: "Server not configured" 
+      }),
     };
   }
 
@@ -255,7 +419,11 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ success: false, code: "SHEET_NOT_CONFIGURED", error: "Sheet not configured" }),
+      body: JSON.stringify({ 
+        success: false, 
+        code: "SHEET_NOT_CONFIGURED", 
+        error: "Sheet not configured" 
+      }),
     };
   }
 
