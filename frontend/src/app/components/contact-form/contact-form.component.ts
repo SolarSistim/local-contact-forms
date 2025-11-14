@@ -359,21 +359,46 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onSubmit(): void {
-    // HONEYPOT CHECK - If the honeypot field is filled, it's likely a bot
-    const honeypotValue = this.contactForm.get('website')?.value;
-    if (honeypotValue && honeypotValue.trim() !== '') {
-      console.warn('Honeypot field was filled - likely bot submission');
-      
-      // Silently fail - don't show error to the bot
-      // This makes it think the submission was successful
-      this.submitting = true;
-      
-      // Simulate a successful submission after a realistic delay
-      setTimeout(() => {
+  // HONEYPOT CHECK - If the honeypot field is filled, it's likely a bot
+  const honeypotValue = this.contactForm.get('website')?.value;
+  if (honeypotValue && honeypotValue.trim() !== '') {
+    console.warn('Honeypot field was filled - sending to backend for server-side bot detection');
+    // IMPORTANT: do NOT return here – let the backend see this and handle it
+  }
+
+  // Mark all fields as touched to show validation errors
+  Object.keys(this.contactForm.controls).forEach(key => {
+    this.contactForm.get(key)?.markAsTouched();
+  });
+
+  if (!this.contactForm.valid || !this.tenantId) {
+    console.error('Form is invalid:', this.contactForm.errors);
+    return;
+  }
+
+  this.submitting = true;
+  this.error = null;
+
+  const formData = {
+    firstName: this.contactForm.get('firstName')?.value.trim(),
+    lastName: this.contactForm.get('lastName')?.value.trim(),
+    email: this.contactForm.get('email')?.value.trim(),
+    phone: this.contactForm.get('phone')?.value.trim(),
+    reason: this.contactForm.get('reason')?.value,
+    notes: this.contactForm.get('message')?.value,
+    notifyTo: this.tenantConfig?.notify_on_submit,
+    submissionsSheetId: this.tenantConfig?.submissionsSheetId,
+    recaptchaToken: this.contactForm.get('recaptchaToken')?.value,
+    // Send the honeypot field to the backend so it can detect bots
+    website: honeypotValue ? honeypotValue.trim() : ''
+  };
+
+  this.apiService.submitForm(formData).subscribe({
+    next: (response) => {
+      if (response.success) {
         this.success = true;
         this.contactForm.reset();
-        this.submitting = false;
-        
+
         // Reset reCAPTCHA
         if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
           try {
@@ -382,81 +407,12 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
             console.error('Error resetting reCAPTCHA:', e);
           }
         }
-      }, 1500); // Realistic submission time
-      
-      return; // Stop here - don't actually submit
-    }
 
-    // Mark all fields as touched to show validation errors
-    Object.keys(this.contactForm.controls).forEach(key => {
-      this.contactForm.get(key)?.markAsTouched();
-    });
-
-    if (!this.contactForm.valid || !this.tenantId) {
-      console.error('Form is invalid:', this.contactForm.errors);
-      return;
-    }
-
-    this.submitting = true;
-    this.error = null;
-
-    const formData = {
-      firstName: this.contactForm.get('firstName')?.value.trim(),
-      lastName: this.contactForm.get('lastName')?.value.trim(),
-      email: this.contactForm.get('email')?.value.trim(),
-      phone: this.contactForm.get('phone')?.value.trim(),
-      reason: this.contactForm.get('reason')?.value,
-      notes: this.contactForm.get('message')?.value,
-      notifyTo: this.tenantConfig?.notify_on_submit,
-      submissionsSheetId: this.tenantConfig?.submissionsSheetId,
-      recaptchaToken: this.contactForm.get('recaptchaToken')?.value,
-      // Don't send the honeypot field to the backend
-    };
-
-    this.apiService.submitForm(formData).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.success = true;
-          this.contactForm.reset();
-          
-          // Reset reCAPTCHA
-          if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
-            try {
-              grecaptcha.reset(this.recaptchaWidgetId);
-            } catch (e) {
-              console.error('Error resetting reCAPTCHA:', e);
-            }
-          }
-          
-          this.submitting = false;
-        } else {
-          this.error = 'Form submission failed. Please try again.';
-          this.submitting = false;
-          
-          // Reset reCAPTCHA on error
-          if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
-            try {
-              grecaptcha.reset(this.recaptchaWidgetId);
-            } catch (e) {
-              console.error('Error resetting reCAPTCHA:', e);
-            }
-          }
-        }
-      },
-      error: (err) => {
-        console.error('Error submitting form:', err);
-        
-        // Check for specific reCAPTCHA errors
-        if (err.error?.code === 'RECAPTCHA_FAILED') {
-          this.error = 'reCAPTCHA verification failed. Please try again.';
-        } else if (err.error?.code === 'RECAPTCHA_MISSING') {
-          this.error = 'Please complete the reCAPTCHA verification.';
-        } else {
-          this.error = 'An error occurred while submitting the form. Please try again.';
-        }
-        
         this.submitting = false;
-        
+      } else {
+        this.error = 'Form submission failed. Please try again.';
+        this.submitting = false;
+
         // Reset reCAPTCHA on error
         if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
           try {
@@ -466,8 +422,33 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         }
       }
-    });
-  }
+    },
+    error: (err) => {
+      console.error('Error submitting form:', err);
+
+      // Check for specific reCAPTCHA errors
+      if (err.error?.code === 'RECAPTCHA_FAILED') {
+        this.error = 'reCAPTCHA verification failed. Please try again.';
+      } else if (err.error?.code === 'RECAPTCHA_MISSING') {
+        this.error = 'Please complete the reCAPTCHA verification.';
+      } else {
+        this.error = 'An error occurred while submitting the form. Please try again.';
+      }
+
+      this.submitting = false;
+
+      // Reset reCAPTCHA on error
+      if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
+        try {
+          grecaptcha.reset(this.recaptchaWidgetId);
+        } catch (e) {
+          console.error('Error resetting reCAPTCHA:', e);
+        }
+      }
+    }
+  });
+}
+
 
   hasSocialMedia(): boolean {
     if (!this.tenantConfig) return false;

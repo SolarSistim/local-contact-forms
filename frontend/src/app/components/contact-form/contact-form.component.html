@@ -266,6 +266,9 @@
               {{ error }}
             </div>
 
+            <!-- Submit Button -->
+            <div class="form-actions">
+
             <div class="recaptcha-container">
               <div id="recaptcha-element"></div>
               <mat-error *ngIf="contactForm.get('recaptchaToken')?.invalid && contactForm.get('recaptchaToken')?.touched">
@@ -273,8 +276,6 @@
               </mat-error>
             </div>
 
-            <!-- Submit Button -->
-            <div class="form-actions">
               <button
                 mat-raised-button
                 color="primary"
@@ -289,6 +290,8 @@
                 <span class="button-text button-text-sending" *ngIf="submitting">Sending...</span>
               </button>
             </div>
+
+
           </form>
         </div>
       </div>

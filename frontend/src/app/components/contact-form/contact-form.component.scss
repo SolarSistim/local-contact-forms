@@ -428,53 +428,56 @@ mat-card-content {
 
   // Button alignment
   .form-actions {
+  display: flex;
+  justify-content: space-between; // recaptcha left, button right
+  align-items: flex-end;          // bottom-align both
+  margin-top: 1rem;
+  width: 100%;                    // ensure it spans the container
+
+  button {
     display: flex;
-    justify-content: flex-end;
-    margin-top: 1rem;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 120px;
+    background-color: var(--theme-button-enabled-background) !important;
+    color: var(--theme-button-enabled-text) !important;
 
-    button {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      min-width: 120px;
-      background-color: var(--theme-button-enabled-background) !important;
-      color: var(--theme-button-enabled-text) !important;
+    &:hover:not(:disabled) {
+      background-color: var(--theme-button-hover-background) !important;
+      color: var(--theme-button-hover-text) !important;
+    }
 
-      &:hover:not(:disabled) {
-        background-color: var(--theme-button-hover-background) !important;
-        color: var(--theme-button-hover-text) !important;
-      }
+    &:disabled {
+      background-color: var(--theme-button-disabled-background) !important;
+      color: var(--theme-button-disabled-text) !important;
+      opacity: 1;
+    }
 
-      &:disabled {
-        background-color: var(--theme-button-disabled-background) !important;
-        color: var(--theme-button-disabled-text) !important;
-        opacity: 1;
-      }
+    .button-spinner {
+      display: inline-block;
+      margin-top: 4px;
+      margin-right: 6px;
 
-      .button-spinner {
-        display: inline-block;
-        margin-top: 4px;
-        margin-right: 6px;
-
-        ::ng-deep {
-          circle {
-            stroke: var(--theme-spinner-color) !important;
-          }
+      ::ng-deep {
+        circle {
+          stroke: var(--theme-spinner-color) !important;
         }
       }
+    }
 
-      .button-text-send {
-        position: relative !important;
-        top: 0px !important;
-      }
+    .button-text-send {
+      position: relative !important;
+      top: 0px !important;
+    }
 
-      .button-text-sending {
-        position: relative !important;
-        top: -4px !important;
-      }
-
+    .button-text-sending {
+      position: relative !important;
+      top: -4px !important;
     }
   }
+}
+
+
 }
 
 // End angular material form
@@ -862,7 +865,7 @@ mat-card-content {
 }
 
 .recaptcha-container {
-  margin: 20px 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -888,25 +891,27 @@ mat-card-content {
 }
 
 .honeypot-field {
-  // position: absolute;
-  // left: -9999px;
-  // top: -9999px;
-  // overflow: hidden;
-  // pointer-events: none;
+  // Method 1: Position absolutely off-screen (RECOMMENDED)
+  // This is the most reliable method
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  overflow: hidden;
+  pointer-events: none;
   label {
-    // position: absolute;
-    // left: -9999px;
+    position: absolute;
+    left: -9999px;
   }
   
   input {
-    // position: absolute;
-    // width: 1px;
-    // height: 1px;
-    // padding: 0;
-    // margin: -1px;
-    // border: 0;
-    // clip: rect(0, 0, 0, 0);
-    // overflow: hidden;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    overflow: hidden;
   }
 }
 

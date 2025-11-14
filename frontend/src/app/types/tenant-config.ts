@@ -43,9 +43,11 @@ export interface FormSubmission {
   email: string;
   phone: string;
   reason: string;
-  notes: string;
+  notes?: string;
   notifyTo?: string;
   submissionsSheetId?: string;
+  recaptchaToken: string;
+  website?: string;
 }
 
 export interface FormSubmissionResponse {
