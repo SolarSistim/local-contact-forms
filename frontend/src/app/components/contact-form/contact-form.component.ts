@@ -68,6 +68,9 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private recaptchaScriptLoaded = false;
   private recaptchaRenderAttempts = 0;
   private maxRenderAttempts = 10;
+  
+  // NEW: Track if reCAPTCHA is ready to prevent form display before it loads
+  recaptchaReady = false;
 
   // Custom Validators
   private nameValidator(control: AbstractControl): ValidationErrors | null {
@@ -164,14 +167,13 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     this.initializeForm();
-    this.loadRecaptcha();
+    // Start loading reCAPTCHA script but don't try to render yet
+    this.loadRecaptchaScript();
   }
 
   ngAfterViewInit(): void {
-    // Try to render reCAPTCHA after view is initialized
-    if (this.recaptchaScriptLoaded) {
-      this.attemptRecaptchaRender();
-    }
+    // Don't attempt to render here - the form might not be visible yet
+    // Render will be triggered by checkIfReadyToDisplay when tenantConfig loads
   }
 
   ngOnDestroy(): void {
@@ -202,7 +204,9 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
           // Apply the theme based on the tenant config
           this.themeService.applyTheme(response.config.theme);
           this.initializeForm();
-          this.loading = false;
+          
+          // CHANGED: Only set loading to false once both config AND reCAPTCHA are ready
+          this.checkIfReadyToDisplay();
         } else {
           this.error = 'Failed to load tenant configuration';
           this.loading = false;
@@ -214,6 +218,22 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
         this.loading = false;
       }
     });
+  }
+
+  /**
+   * NEW: Check if both tenant config and reCAPTCHA are ready before displaying form
+   */
+  private checkIfReadyToDisplay(): void {
+    // Show the form as soon as tenant config is loaded
+    if (this.tenantConfig) {
+      this.loading = false;
+      this.cdr.detectChanges();
+      
+      // Now that form is visible, attempt to render reCAPTCHA
+      if (!this.recaptchaReady) {
+        setTimeout(() => this.attemptRecaptchaRender(), 100);
+      }
+    }
   }
 
   initializeForm(): void {
@@ -231,15 +251,14 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Load reCAPTCHA script and render widget
+   * Load reCAPTCHA script (don't render yet)
    */
-  loadRecaptcha(): void {
+  loadRecaptchaScript(): void {
     if (typeof window === 'undefined') return;
 
     // Check if script already exists
     if (document.getElementById('recaptcha-script')) {
       this.recaptchaScriptLoaded = true;
-      this.attemptRecaptchaRender();
       return;
     }
 
@@ -254,11 +273,13 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
     (window as any).onRecaptchaLoad = () => {
       this.recaptchaLoaded = true;
       this.recaptchaScriptLoaded = true;
-      this.attemptRecaptchaRender();
+      // Don't attempt render here - let ngAfterViewInit handle it
     };
 
     script.onerror = () => {
       console.error('Failed to load reCAPTCHA script');
+      this.error = 'Failed to load reCAPTCHA. Please refresh the page.';
+      this.loading = false;
     };
 
     document.head.appendChild(script);
@@ -268,14 +289,23 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
    * Attempt to render reCAPTCHA with retry logic
    */
   attemptRecaptchaRender(): void {
+    // Only run in browser environment
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
     this.recaptchaRenderAttempts++;
 
     if (this.recaptchaRenderAttempts > this.maxRenderAttempts) {
       console.error('Max reCAPTCHA render attempts reached');
+      // Set recaptchaReady to true anyway to unblock the form
+      // User can still submit but backend will validate
+      this.recaptchaReady = true;
+      this.checkIfReadyToDisplay();
       return;
     }
 
-    // Check if element exists
+    // Check if the element exists in the DOM
     const element = document.getElementById('recaptcha-element');
     
     if (!element) {
@@ -324,8 +354,14 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       
       console.log('reCAPTCHA rendered successfully');
+      
+      // CHANGED: Mark reCAPTCHA as ready and check if we can display the form
+      this.recaptchaReady = true;
+      this.checkIfReadyToDisplay();
     } catch (error) {
       console.error('Error rendering reCAPTCHA:', error);
+      this.error = 'Failed to render reCAPTCHA. Please refresh the page.';
+      this.loading = false;
     }
   }
 
