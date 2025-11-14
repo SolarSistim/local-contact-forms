@@ -64,9 +64,6 @@ setInterval(() => {
 
 /**
  * Verify reCAPTCHA token with Google
- * @param {string} token - The reCAPTCHA token from the frontend
- * @param {string} remoteip - The user's IP address (optional but recommended)
- * @returns {Promise<{success: boolean, score?: number, action?: string, challenge_ts?: string, hostname?: string, error_codes?: string[]}>}
  */
 async function verifyRecaptcha(token, remoteip) {
   const secretKey = process.env.RECAPTCHA_SECRET_KEY;
@@ -175,8 +172,7 @@ function validateSubmission(body) {
     };
   }
 
-  // Validate against allowed formats:
-  // 8504802892, (850) 480-2892, 850-480-2892, 850 480-2892, 850 4802892
+  // Validate against allowed formats
   const phonePattern = /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}[-\s]?\d{3}[-\s]?\d{4})$/;
   if (!phonePattern.test(body.phone)) {
     return { 
@@ -188,61 +184,33 @@ function validateSubmission(body) {
   
   // Length checks to prevent abuse
   if (body.firstName && body.firstName.length > 100) {
-    return { 
-      valid: false, 
-      error: "First name too long",
-      code: 'VALIDATION_FAILED'
-    };
+    return { valid: false, error: "First name too long", code: 'VALIDATION_FAILED' };
   }
   
   if (body.lastName && body.lastName.length > 100) {
-    return { 
-      valid: false, 
-      error: "Last name too long",
-      code: 'VALIDATION_FAILED'
-    };
+    return { valid: false, error: "Last name too long", code: 'VALIDATION_FAILED' };
   }
   
   if (body.notes && body.notes.length > 5000) {
-    return { 
-      valid: false, 
-      error: "Message too long (max 5000 characters)",
-      code: 'VALIDATION_FAILED'
-    };
+    return { valid: false, error: "Message too long (max 5000 characters)", code: 'VALIDATION_FAILED' };
   }
   
   if (body.phone && body.phone.length > 20) {
-    return { 
-      valid: false, 
-      error: "Phone number too long",
-      code: 'VALIDATION_FAILED'
-    };
+    return { valid: false, error: "Phone number too long", code: 'VALIDATION_FAILED' };
   }
   
   if (body.reason && body.reason.length > 200) {
-    return { 
-      valid: false, 
-      error: "Reason too long",
-      code: 'VALIDATION_FAILED'
-    };
+    return { valid: false, error: "Reason too long", code: 'VALIDATION_FAILED' };
   }
   
   // Validate submissionsSheetId format (Google Sheet IDs are alphanumeric)
   if (body.submissionsSheetId && !/^[a-zA-Z0-9_-]{40,}$/.test(body.submissionsSheetId)) {
-    return { 
-      valid: false, 
-      error: "Invalid sheet ID format",
-      code: 'VALIDATION_FAILED'
-    };
+    return { valid: false, error: "Invalid sheet ID format", code: 'VALIDATION_FAILED' };
   }
   
   // Validate notifyTo email if provided
   if (body.notifyTo && !emailRegex.test(body.notifyTo)) {
-    return { 
-      valid: false, 
-      error: "Invalid notification email format",
-      code: 'VALIDATION_FAILED'
-    };
+    return { valid: false, error: "Invalid notification email format", code: 'VALIDATION_FAILED' };
   }
   
   return { valid: true };
@@ -252,13 +220,19 @@ function getGmailTransport() {
   const gmailUser = process.env.GMAIL_USER;
   const gmailPass = process.env.GMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
 
+  console.log("Email config check:", {
+    gmailUserSet: !!gmailUser,
+    gmailPassSet: !!gmailPass,
+    gmailUser: gmailUser ? gmailUser.substring(0, 3) + '***' : 'NOT SET'
+  });
+
   if (!gmailUser || !gmailPass) {
     const err = new Error("Gmail credentials not set (GMAIL_USER + GMAIL_PASS or GMAIL_APP_PASSWORD).");
     err.code = "EMAIL_CONFIG_MISSING";
     throw err;
   }
 
-  return nodemailer.createTransport({
+  return nodemailer.createTransporter({
     service: "gmail",
     auth: {
       user: gmailUser,
@@ -282,12 +256,14 @@ async function notifyAdminOnError(subject, message) {
   try {
     const transporter = getGmailTransport();
     const adminTo = process.env.ADMIN_EMAIL || process.env.GMAIL_USER;
+    console.log("Sending admin notification to:", adminTo);
     await transporter.sendMail({
       from: `"Local Contact Forms" <${process.env.GMAIL_USER}>`,
       to: adminTo,
       subject,
       text: message,
     });
+    console.log("Admin notification sent successfully");
   } catch (err) {
     console.error("Failed to send admin alert:", err.message);
   }
@@ -346,9 +322,18 @@ exports.handler = async (event, context) => {
     };
   }
 
+  console.log("Form submission received:", {
+    firstName: body.firstName,
+    lastName: body.lastName,
+    email: body.email,
+    notifyTo: body.notifyTo,
+    hasRecaptchaToken: !!body.recaptchaToken
+  });
+
   // Validate submission data (including reCAPTCHA token presence)
   const validation = validateSubmission(body);
   if (!validation.valid) {
+    console.error("Validation failed:", validation.error);
     return {
       statusCode: 400,
       headers: corsHeaders,
@@ -367,7 +352,6 @@ exports.handler = async (event, context) => {
     if (!recaptchaResult.success) {
       console.warn('reCAPTCHA verification failed:', recaptchaResult['error-codes']);
       
-      // Log specific error codes for debugging
       const errorCodes = recaptchaResult['error-codes'] || [];
       let errorMessage = 'reCAPTCHA verification failed';
       
@@ -388,13 +372,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Optional: Log successful verification for monitoring
     console.log('reCAPTCHA verified successfully for IP:', ip);
 
   } catch (recaptchaError) {
     console.error('reCAPTCHA verification error:', recaptchaError);
     
-    // Notify admin of reCAPTCHA issues
     await notifyAdminOnError(
       "LCF Error: reCAPTCHA Verification Failed",
       `reCAPTCHA verification encountered an error:\n${recaptchaError.message}\n\nIP: ${ip}`
@@ -413,6 +395,7 @@ exports.handler = async (event, context) => {
 
   // Check for Google credentials
   if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
+    console.error("Google credentials missing");
     await notifyAdminOnError(
       "LCF Error: Missing Google creds",
       "submitForm was called but GOOGLE_CLIENT_EMAIL or GOOGLE_PRIVATE_KEY is missing."
@@ -432,6 +415,7 @@ exports.handler = async (event, context) => {
   const submissionsSheetId = body.submissionsSheetId || process.env.TEST_SHEET_ID;
 
   if (!submissionsSheetId) {
+    console.error("Submissions sheet ID missing");
     await notifyAdminOnError(
       "LCF Error: Missing sheet ID",
       "submitForm was called but submissionsSheetId and TEST_SHEET_ID are not set."
@@ -474,8 +458,10 @@ exports.handler = async (event, context) => {
     const spreadsheetId = submissionsSheetId;
     const sheetName = "submissions";
 
+    console.log("Attempting to write to Google Sheet:", submissionsSheetId);
+
     try {
-      // try your original "insert row then update" approach
+      // try insert row then update approach
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         requestBody: {
@@ -505,6 +491,7 @@ exports.handler = async (event, context) => {
       });
 
       sheetOk = true;
+      console.log("Successfully wrote to Google Sheet");
     } catch (insertErr) {
       console.error("Row insert failed, trying append:", insertErr.message);
       // fallback to simple append at end
@@ -518,11 +505,17 @@ exports.handler = async (event, context) => {
         },
       });
       sheetOk = true;
+      console.log("Successfully appended to Google Sheet");
     }
 
-    // notification email
+    // Send notification email
+    console.log("Attempting to send notification email...");
     try {
       const transporter = getGmailTransport();
+      
+      const emailTo = body.notifyTo || process.env.GMAIL_USER;
+      console.log("Sending notification email to:", emailTo);
+
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -588,22 +581,39 @@ exports.handler = async (event, context) => {
         </html>
       `;
 
-      await transporter.sendMail({
+      const mailOptions = {
         from: `"Local Contact Forms" <${process.env.GMAIL_USER}>`,
-        to: body.notifyTo || process.env.GMAIL_USER,
+        to: emailTo,
         subject: `New contact form submission from ${body.firstName || ""} ${body.lastName || ""}`,
         html: htmlContent,
         text: `New submission from ${body.firstName || ""} ${body.lastName || ""}\n\nFirst Name: ${body.firstName || ""}\nLast Name: ${body.lastName || ""}\nEmail: ${body.email || ""}\nPhone: ${body.phone || ""}\nReason: ${body.reason || ""}\nMessage: ${body.notes || ""}`,
+      };
+
+      console.log("Email options:", {
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject
       });
+
+      const emailResult = await transporter.sendMail(mailOptions);
       emailOk = true;
+      console.log("Notification email sent successfully:", emailResult.messageId);
     } catch (emailErr) {
       emailOk = false;
-      console.error("Notification email failed:", emailErr.message);
+      console.error("Notification email failed:", emailErr);
+      console.error("Email error details:", {
+        message: emailErr.message,
+        code: emailErr.code,
+        command: emailErr.command
+      });
+      
       await notifyAdminOnError(
         "LCF Warning: Notification email failed",
-        `Submit succeeded but notification email failed.\nError: ${emailErr.message}`
+        `Submit succeeded but notification email failed.\nError: ${emailErr.message}\n\nStack: ${emailErr.stack}`
       );
     }
+
+    console.log("Form submission completed:", { sheetOk, emailOk });
 
     return {
       statusCode: 200,
@@ -616,10 +626,11 @@ exports.handler = async (event, context) => {
     };
   } catch (err) {
     console.error("submitForm fatal error:", err);
+    console.error("Error stack:", err.stack);
 
     await notifyAdminOnError(
       "LCF Error: submitForm failed",
-      `submitForm failed with error:\n${err.message}`
+      `submitForm failed with error:\n${err.message}\n\nStack:\n${err.stack}`
     );
 
     return {
