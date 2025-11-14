@@ -2,12 +2,21 @@
 require("dotenv").config();
 const { google } = require("googleapis");
 const nodemailer = require("nodemailer");
-const fetch = require("node-fetch");
+
+// Dynamic import for node-fetch (supports both CommonJS and ESM)
+let fetch;
+(async () => {
+  if (!fetch) {
+    const fetchModule = await import('node-fetch');
+    fetch = fetchModule.default;
+  }
+})();
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
   'https://localcontactforms.com',
   'https://www.localcontactforms.com',
+  'https://local-contact-forms.netlify.app',
   'http://localhost:8888',
   'http://localhost:4200'
 ];
@@ -63,8 +72,11 @@ async function verifyRecaptcha(token, remoteip) {
   const secretKey = process.env.RECAPTCHA_SECRET_KEY;
   
   if (!secretKey) {
+    console.error("RECAPTCHA_SECRET_KEY environment variable is not set");
     throw new Error("RECAPTCHA_SECRET_KEY not configured");
   }
+
+  console.log("Verifying reCAPTCHA token...");
 
   const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
   
@@ -78,6 +90,12 @@ async function verifyRecaptcha(token, remoteip) {
   }
 
   try {
+    // Ensure fetch is loaded
+    if (!fetch) {
+      const fetchModule = await import('node-fetch');
+      fetch = fetchModule.default;
+    }
+
     const response = await fetch(verifyUrl, {
       method: 'POST',
       headers: {
@@ -87,10 +105,12 @@ async function verifyRecaptcha(token, remoteip) {
     });
 
     if (!response.ok) {
+      console.error(`reCAPTCHA API returned status: ${response.status}`);
       throw new Error(`reCAPTCHA verification request failed: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log("reCAPTCHA verification result:", { success: data.success, errorCodes: data['error-codes'] });
     return data;
   } catch (error) {
     console.error('reCAPTCHA verification error:', error);
