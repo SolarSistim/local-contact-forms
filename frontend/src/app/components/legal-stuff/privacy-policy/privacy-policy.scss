@@ -1,0 +1,20 @@
+@import '../dialog-styles.scss';
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-10px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-5px);
+  }
+}
+
+button.bounce {
+  animation: bounce 0.6s ease;
+}

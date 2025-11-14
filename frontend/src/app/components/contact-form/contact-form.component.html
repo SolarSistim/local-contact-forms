@@ -283,11 +283,11 @@
     
     <!-- Desktop separators and links -->
     <span class="separator desktop-only">|</span>
-    <span class="desktop-only">Terms of Service</span>
+    <span class="desktop-only footer-link" (click)="openPolicyDialog('terms')">Terms of Service</span>
     <span class="separator desktop-only">|</span>
-    <span class="desktop-only">Privacy Policy</span>
+    <span class="desktop-only footer-link" (click)="openPolicyDialog('privacy')">Privacy Policy</span>
     <span class="separator desktop-only">|</span>
-    <span class="desktop-only">ADA Statement</span>
+    <span class="desktop-only footer-link" (click)="openPolicyDialog('ada')">ADA Statement</span>
     
     <!-- Mobile menu button -->
     <button class="mobile-menu-button" [matMenuTriggerFor]="footerMenu" mat-icon-button>
@@ -298,7 +298,7 @@
 
 <!-- Material Menu -->
 <mat-menu #footerMenu="matMenu" yPosition="above">
-  <button mat-menu-item>Terms of Service</button>
-  <button mat-menu-item>Privacy Policy</button>
-  <button mat-menu-item>ADA Statement</button>
+  <button mat-menu-item (click)="openPolicyDialog('terms')">Terms of Service</button>
+  <button mat-menu-item (click)="openPolicyDialog('privacy')">Privacy Policy</button>
+  <button mat-menu-item (click)="openPolicyDialog('ada')">ADA Statement</button>
 </mat-menu>

@@ -38,3 +38,9 @@ body {
 
 html, body { min-height: 80vh; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+@media (max-width: 960px) {
+  html.cdk-global-scrollblock {
+    overflow-y: hidden !important;
+  }
+}

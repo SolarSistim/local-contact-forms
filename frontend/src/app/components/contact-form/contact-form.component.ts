@@ -17,6 +17,13 @@ import { LoaderComponent } from '../loader/loader.component';
 import { MessageComponent } from '../message/message.component';
 import { MatMenuModule } from '@angular/material/menu';
 
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Inject } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { AdaStatement } from '../legal-stuff/ada-statement/ada-statement';
+import { PrivacyPolicy, PolicyDialogData } from '../legal-stuff/privacy-policy/privacy-policy';
+import { WebsiteTermsOfService } from '../legal-stuff/website-terms-of-service/website-terms-of-service';
+
 @Component({
   selector: 'app-contact-form',
   standalone: true,
@@ -33,12 +40,14 @@ import { MatMenuModule } from '@angular/material/menu';
     MatTooltipModule,
     LoaderComponent,
     MessageComponent,
-    MatMenuModule
+    MatMenuModule,
+    MatDialogModule
   ],
   templateUrl: './contact-form.component.html',
   styleUrl: './contact-form.component.scss'
 })
 export class ContactFormComponent implements OnInit {
+
   contactForm!: FormGroup;
   tenantConfig: TenantConfig | null = null;
   reasonOptions: string[] = [];
@@ -121,7 +130,8 @@ export class ContactFormComponent implements OnInit {
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private apiService: ApiService,
-    private themeService: ThemeService
+    private themeService: ThemeService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -262,4 +272,65 @@ export class ContactFormComponent implements OnInit {
       console.error('Failed to copy:', err);
     });
   }
+
+  openPolicyDialog(type: 'terms' | 'privacy' | 'ada'): void {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 960;
+
+  let title = '';
+  let component: any;
+
+  switch (type) {
+    case 'terms':
+      title = 'Terms of Service';
+      component = WebsiteTermsOfService;
+      break;
+    case 'privacy':
+      title = 'Privacy Policy';
+      component = PrivacyPolicy;
+      break;
+    case 'ada':
+      title = 'ADA Statement';
+      component = AdaStatement;
+      break;
+  }
+
+  const data: PolicyDialogData = {
+    title,
+    type,
+    clientName: this.tenantConfig?.business_name,
+    clientWebsite: this.tenantConfig?.business_web_url,
+    clientEmail: this.tenantConfig?.notify_on_submit,
+    clientAddressLine1: this.tenantConfig?.business_address_1,
+    clientAddressLine2: this.tenantConfig?.business_address_2,
+    clientCity: this.tenantConfig?.business_city,
+    clientState: this.tenantConfig?.business_state,
+    clientZip: this.tenantConfig?.business_zip
+  };
+
+  const baseConfig = {
+    disableClose: true,
+    data,
+    panelClass: 'policy-dialog-panel' as string
+  };
+
+if (isMobile) {
+  this.dialog.open(component, {
+    ...baseConfig,
+    width: '100vw',
+    maxWidth: '100vw',
+    height: '100vh',
+    maxHeight: '100vh',
+    position: { top: '0', left: '0' }
+  });
+} else {
+  this.dialog.open(component, {
+    ...baseConfig,
+    width: '60vw',
+    maxWidth: '800px',
+    maxHeight: '80vh',
+    position: { top: '10vh' }
+  });
+}
+}
+
 }

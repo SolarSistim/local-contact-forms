@@ -1,0 +1,59 @@
+<h2 mat-dialog-title>{{ data.title || 'ADA Statement' }}</h2>
+
+<mat-dialog-content class="app-dialog-content policy-dialog-panel">
+  <section class="app-dialog-section">
+    <p class="app-dialog-last-updated">
+      Last Updated: {{ 'January 1, 2025' }}
+    </p>
+
+    <h3>Accessibility Statement for <strong>localcontactforms.com</strong></h3>
+
+    <p>
+      This ADA Statement describes the accessibility efforts for services provided
+      through <strong>localcontactforms.com</strong>, including forms and related
+      functionality made available on behalf of
+      <strong>{{ data.clientName || 'our client' }}</strong>. We are committed to
+      improving access for all users, including individuals with disabilities.
+    </p>
+
+    <h4>Our Accessibility Approach</h4>
+
+    <p>
+      We strive to follow applicable accessibility best practices and to support
+      the use of assistive technologies when interacting with our website and the
+      hosted forms. Our goal is to make it easier for users with diverse abilities
+      to access information and complete tasks.
+    </p>
+
+    <h4>Feedback and Accessibility Concerns</h4>
+
+    <p>
+      If you encounter an accessibility barrier while using
+      <strong>localcontactforms.com</strong> or any client-leased form, we
+      encourage you to let us know so we can review the issue and determine
+      appropriate next steps. Your feedback helps us continue to improve
+      accessibility for all users.
+    </p>
+
+    <h4>Client and Third-Party Content</h4>
+
+    <p>
+      While we aim to maintain accessible services across our platform, some
+      content, configurations, or integrations may be provided or controlled by
+      <strong>{{ data.clientName || 'our client' }}</strong> or other third
+      parties and may not fully conform to all accessibility standards. We
+      encourage our clients to review and maintain the accessibility of their
+      own materials and communications.
+    </p>
+  </section>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding-top: 15px;">
+  <button 
+    mat-raised-button 
+    color="primary" 
+    (click)="onAcknowledge()" 
+    [class.bounce]="shouldBounce">
+    I have read this document 
+  </button>
+</mat-dialog-actions>

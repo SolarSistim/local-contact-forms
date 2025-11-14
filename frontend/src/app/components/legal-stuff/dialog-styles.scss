@@ -1,0 +1,240 @@
+/* dialog-styles.scss */
+
+/* Generic scrollable dialog content */
+.app-dialog-content {
+  max-height: 70vh;
+  overflow: auto;
+
+  font-size: 1rem;
+  line-height: 1.7;
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-info-panel-text) var(--theme-info-panel-background);
+}
+
+/* On tablet & below (full-screen), let the flex layout control height */
+@media (max-width: 960px) {
+  .app-dialog-content {
+    max-height: none;
+  }
+}
+
+/* Sections inside dialogs */
+.app-dialog-section {
+  margin-bottom: 1.5rem;
+}
+
+.app-dialog-section h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.app-dialog-section h4 {
+  font-size: 1.1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.app-dialog-section p {
+  margin: 0.35rem 0;
+}
+
+.app-dialog-section ul {
+  margin: 0.35rem 0 0.75rem;
+  padding-left: 1.4rem;
+}
+
+.app-dialog-section li {
+  margin-bottom: 0.25rem;
+}
+
+.app-dialog-last-updated {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-bottom: 1rem;
+}
+
+/* Scrollbars when using policy-dialog-panel */
+.policy-dialog-panel .mat-mdc-dialog-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-info-panel-text) var(--theme-info-panel-background);
+}
+
+.policy-dialog-panel .mat-mdc-dialog-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.policy-dialog-panel .mat-mdc-dialog-content::-webkit-scrollbar-track {
+  background-color: var(--theme-info-panel-background);
+}
+
+.policy-dialog-panel .mat-mdc-dialog-content::-webkit-scrollbar-thumb {
+  background-color: var(--theme-info-panel-text);
+  border-radius: 3px;
+}
+
+/* =============================== */
+/* Dialog container + header/body/footer theming */
+/* =============================== */
+
+/* Whole dialog surface */
+.policy-dialog-panel .mat-mdc-dialog-surface {
+  background-color: var(--theme-info-panel-background);
+  color: var(--theme-info-panel-text);
+  box-shadow: none;
+  border: 1px solid var(--theme-border-color);
+  border-radius: 8px;
+}
+
+/* Header (mat-dialog-title wrapper) */
+.policy-dialog-panel .mat-mdc-dialog-title,
+.policy-dialog-panel h2[mat-dialog-title] {
+  background-color: var(--theme-info-panel-background);
+  color: var(--theme-info-panel-text);
+  margin: 0;
+  padding: 16px 24px;
+  font-weight: 600;
+}
+
+/* Body/content */
+.policy-dialog-panel .mat-mdc-dialog-content {
+  background-color: var(--theme-info-panel-background);
+  color: var(--theme-info-panel-text);
+  padding: 0 24px 16px 24px;
+}
+
+/* Footer/actions */
+.policy-dialog-panel .mat-mdc-dialog-actions {
+  background-color: var(--theme-info-panel-background);
+  color: var(--theme-info-panel-text);
+  padding: 8px 24px 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Make text inside content inherit properly */
+.policy-dialog-panel .mat-mdc-dialog-content p,
+.policy-dialog-panel .mat-mdc-dialog-content h1,
+.policy-dialog-panel .mat-mdc-dialog-content h2,
+.policy-dialog-panel .mat-mdc-dialog-content h3 {
+  color: var(--theme-info-panel-text);
+}
+
+/* =============================== */
+/* Full-screen mobile layout */
+/* =============================== */
+
+@media (max-width: 960px) {
+  .cdk-overlay-pane.policy-dialog-panel {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+  }
+
+  .policy-dialog-panel .mat-mdc-dialog-surface {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .policy-dialog-panel .mat-mdc-dialog-content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+
+  .policy-dialog-panel .mat-mdc-dialog-actions {
+    flex-shrink: 0;
+    margin-top: 0;
+    padding: 0 16px 16px;
+    justify-content: flex-end;
+  }
+
+  .cdk-global-overlay-wrapper {
+    overflow: hidden !important;
+  }
+}
+
+/* Dialog action button: match the Send button styles */
+.policy-dialog-panel .mat-mdc-dialog-actions button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+  background-color: var(--theme-button-enabled-background) !important;
+  color: var(--theme-button-enabled-text) !important;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-button-hover-background) !important;
+    color: var(--theme-button-hover-text) !important;
+  }
+
+  &:disabled {
+    background-color: var(--theme-button-disabled-background) !important;
+    color: var(--theme-button-disabled-text) !important;
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-10px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-5px);
+  }
+}
+
+button.bounce {
+  animation: bounce 0.6s ease;
+}
+
+/* Slightly larger base font inside policy dialogs */
+.policy-dialog-panel .app-dialog-content {
+  font-size: 1.05rem;  /* ~5% larger than default */
+  line-height: 1.8;    /* a bit more spacing for readability */
+}
+
+/* Make section headings more prominent */
+.policy-dialog-panel .app-dialog-section h3 {
+  font-size: 1.35rem;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.policy-dialog-panel .app-dialog-section h4 {
+  font-size: 1.5rem;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Increase spacing between paragraphs and lists slightly */
+.policy-dialog-panel .app-dialog-section p {
+  margin: 0.4rem 0;
+}
+
+.policy-dialog-panel .app-dialog-section ul {
+  margin: 0.5rem 0 0.9rem;
+}
+
+::ng-deep mat-icon {
+  font-size: 20px;
+  position: relative;
+  margin-right: 0px !important;
+}

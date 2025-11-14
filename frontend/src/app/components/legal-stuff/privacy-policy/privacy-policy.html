@@ -1,0 +1,261 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+
+<mat-dialog-content class="app-dialog-content">
+  <ng-container [ngSwitch]="data.type">
+
+    <ng-container *ngSwitchCase="'terms'">
+      <section class="app-dialog-section">
+        <!-- Keep or update your terms later -->
+        <p>These are the Terms of Service for this website...</p>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'privacy'">
+      <section class="app-dialog-section">
+        <p class="app-dialog-last-updated">
+          Last Updated: {{ 'January 1, 2025' }}
+        </p>
+
+        <h3>Privacy Policy for LocalContactForms.com</h3>
+
+        <p>
+          This Privacy Policy explains how <strong>LocalContactForms.com</strong>
+          (“<strong>LocalContactForms</strong>”, “we”, “our”, or “us”) handles
+          information submitted through contact forms hosted on our platform, and
+          describes in general terms how
+          <strong>{{ data.clientName || 'our client' }}</strong>
+          (“<strong>Client</strong>”) may use information once they receive it.
+        </p>
+
+        <p>
+          LocalContactForms provides hosted contact forms that businesses can use to communicate with current and potential clients. When you submit a form, your
+          information is processed by LocalContactForms and then made available to the
+          Client whose name appears on or near the form.
+        </p>
+      </section>
+
+      <section class="app-dialog-section">
+        <h3>1. Who Is Responsible for Your Data?</h3>
+
+        <p>
+          For each contact form:
+        </p>
+
+        <ul>
+          <li>
+            <strong>LocalContactForms</strong> acts as a
+            <em>service provider / processor</em> that securely receives, processes,
+            and routes your submission on behalf of the Client.
+          </li>
+          <li>
+            <strong>{{ data.clientName || 'The business listed on the form' }}</strong>
+            acts as the <em>controller</em> of the data you submit. They decide how to
+            use, store, and retain your information in their own systems.
+          </li>
+        </ul>
+
+        <p>
+          Questions about how your information is used after it is received by the
+          Client should be directed to:
+        </p>
+
+        <p *ngIf="data.clientName">
+          <strong>{{ data.clientName }}</strong><br>
+          <span *ngIf="data.clientAddressLine1">{{ data.clientAddressLine1 }}<br></span>
+          <span *ngIf="data.clientAddressLine2">{{ data.clientAddressLine2 }}<br></span>
+          <span *ngIf="data.clientCity">
+            {{ data.clientCity }}, {{ data.clientState }} {{ data.clientZip }}<br>
+          </span>
+          <span *ngIf="data.clientEmail">Email: {{ data.clientEmail }}<br></span>
+          <span *ngIf="data.clientWebsite">Website: {{ data.clientWebsite }}</span>
+        </p>
+
+        <p *ngIf="!data.clientName">
+          For details about how your information is used, please contact the business
+          that provided the form or review their own privacy policy.
+        </p>
+      </section>
+
+      <section class="app-dialog-section">
+        <h3>2. Information We Collect</h3>
+
+        <h4>2.1 Information You Submit Through the Form</h4>
+        <p>
+          The contact form may ask for information such as:
+        </p>
+        <ul>
+          <li>First and last name</li>
+          <li>Email address</li>
+          <li>Phone number</li>
+          <li>Reason for contacting</li>
+          <li>Message or inquiry details</li>
+          <li>Any additional fields configured by {{ data.clientName || 'the Client' }}</li>
+        </ul>
+
+        <h4>2.2 Information Collected Automatically by LocalContactForms</h4>
+        <p>
+          When you submit a form, LocalContactForms may also automatically collect:
+        </p>
+        <ul>
+          <li>IP address</li>
+          <li>Browser and device information</li>
+          <li>Date and time of submission</li>
+          <li>Form URL or page where the submission occurred</li>
+        </ul>
+
+        <p>
+          This information helps us provide and improve the service, protect against
+          spam and abuse, and maintain the security and reliability of our platform.
+        </p>
+      </section>
+
+      <section class="app-dialog-section">
+        <h3>3. How Your Information Is Used</h3>
+
+        <h4>3.1 How LocalContactForms Uses Your Information</h4>
+        <p>
+          LocalContactForms processes information on behalf of Clients in order to:
+        </p>
+        <ul>
+          <li>Deliver your form submission to {{ data.clientName || 'the Client' }}</li>
+          <li>Store submissions so the Client can review them later</li>
+          <li>Protect the platform from spam, abuse, and security threats</li>
+          <li>Monitor system performance, reliability, and service quality</li>
+        </ul>
+
+        <p>
+          We <strong>do not sell</strong> your personal information, and we do not use
+          the content of your message to market our own services directly to you.
+        </p>
+
+        <h4>3.2 How the Client Uses Your Information</h4>
+        <p>
+          {{ data.clientName || 'The Client' }} independently decides how to use the
+          information you submit. Common uses may include:
+        </p>
+        <ul>
+          <li>Responding to your inquiry or request</li>
+          <li>Providing quotes, products, or services</li>
+          <li>Maintaining customer or lead records</li>
+          <li>Sending follow-up communications (where permitted by law)</li>
+          <li>Complying with legal and regulatory obligations</li>
+        </ul>
+
+        <p>
+          LocalContactForms does not control or supervise the Client’s internal data
+          practices. For details about {{ data.clientName || 'the Client' }}’s privacy
+          practices, please contact them directly or refer to their own privacy policy.
+        </p>
+      </section>
+
+      <section class="app-dialog-section">
+        <h3>4. Data Sharing</h3>
+
+        <p>
+          LocalContactForms may share data only in the following situations:
+        </p>
+        <ul>
+          <li>With the Client who owns the form you submitted</li>
+          <li>With trusted service providers who host, support, or maintain our platform</li>
+          <li>When we reasonably believe it is required to comply with law, regulation,
+              or legal process, or to protect our rights or the rights of others</li>
+        </ul>
+
+        <p>
+          {{ data.clientName || 'The Client' }} may share your information consistent
+          with its own policies and legal obligations, which are separate from those of
+          LocalContactForms.
+        </p>
+      </section>
+
+      <section class="app-dialog-section">
+        <h3>5. Data Storage and Retention</h3>
+
+        <p>
+          LocalContactForms stores form submissions in secure systems and generally
+          retains them for as long as necessary to provide the service to the Client,
+          maintain appropriate backups, and support the security and integrity of our
+          platform, or as otherwise required by law.
+        </p>
+
+        <p>
+          {{ data.clientName || 'The Client' }} may also store your information in email,
+          customer relationship management (CRM) tools, or other business systems, and
+          may keep it according to their own retention policies and legal obligations.
+        </p>
+      </section>
+
+      <section class="app-dialog-section">
+        <h3>6. Security</h3>
+
+        <p>
+          We use reasonable administrative, technical, and physical safeguards to help
+          protect information processed through LocalContactForms, including encrypted
+          connections (HTTPS) and access controls designed to limit access to authorized
+          personnel and systems.
+        </p>
+
+        <p>
+          Once your information is delivered to {{ data.clientName || 'the Client' }},
+          they are responsible for securing it in their own systems.
+        </p>
+      </section>
+
+      <section class="app-dialog-section">
+        <h3>7. Your Rights</h3>
+
+        <p>
+          Depending on your location, you may have rights to access, correct, delete, or
+          restrict the use of your personal information, or to object to certain forms
+          of processing.
+        </p>
+
+        <p>
+          To exercise these rights in connection with a specific inquiry or form submission,
+          please contact {{ data.clientName || 'the Client' }} directly, as they are the
+          controller of your information.
+        </p>
+
+        <p>
+          For questions about how LocalContactForms processes data as a service provider,
+          you may contact us at:
+        </p>
+
+        <p>
+          <strong>LocalContactForms.com</strong><br>
+          Email: support@localcontactforms.com<br>
+          Website: https://localcontactforms.com
+        </p>
+      </section>
+
+      <section class="app-dialog-section">
+        <h3>8. Changes to This Policy</h3>
+
+        <p>
+          We may update this Privacy Policy from time to time. When we make changes, we
+          will revise the “Last Updated” date above and may also post the updated version
+          on LocalContactForms.com or in the relevant form interface. Clients may also
+          maintain their own privacy documentation separately.
+        </p>
+      </section>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'ada'">
+      <section class="app-dialog-section">
+        <p>We are committed to providing an accessible experience for all users...</p>
+      </section>
+    </ng-container>
+
+  </ng-container>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding-top: 15px;">
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="onAcknowledge()"
+    [class.bounce]="shouldBounce"
+  >
+    I have read this document
+  </button>
+</mat-dialog-actions>
