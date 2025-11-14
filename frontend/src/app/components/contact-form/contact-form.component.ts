@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -50,7 +50,7 @@ declare const grecaptcha: any;
   templateUrl: './contact-form.component.html',
   styleUrl: './contact-form.component.scss'
 })
-export class ContactFormComponent implements OnInit, OnDestroy {
+export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   contactForm!: FormGroup;
   tenantConfig: TenantConfig | null = null;
@@ -62,9 +62,12 @@ export class ContactFormComponent implements OnInit, OnDestroy {
   tenantId: string | null = null;
 
   // reCAPTCHA configuration
-  private recaptchaSiteKey = '6LcKsAwsAAAAABbClubGJhDxBTmT7eHYUUpXDfnV';
+  private recaptchaSiteKey = '6LcKsAwsAAAAABbClubGJhDxBTmT7eHYUUpXDfnV'; // Replace with your actual site key
   private recaptchaLoaded = false;
   private recaptchaWidgetId: number | null = null;
+  private recaptchaScriptLoaded = false;
+  private recaptchaRenderAttempts = 0;
+  private maxRenderAttempts = 10;
 
   // Custom Validators
   private nameValidator(control: AbstractControl): ValidationErrors | null {
@@ -141,7 +144,8 @@ export class ContactFormComponent implements OnInit, OnDestroy {
     private apiService: ApiService,
     private themeService: ThemeService,
     private dialog: MatDialog,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -161,6 +165,13 @@ export class ContactFormComponent implements OnInit, OnDestroy {
 
     this.initializeForm();
     this.loadRecaptcha();
+  }
+
+  ngAfterViewInit(): void {
+    // Try to render reCAPTCHA after view is initialized
+    if (this.recaptchaScriptLoaded) {
+      this.attemptRecaptchaRender();
+    }
   }
 
   ngOnDestroy(): void {
@@ -225,7 +236,8 @@ export class ContactFormComponent implements OnInit, OnDestroy {
 
     // Check if script already exists
     if (document.getElementById('recaptcha-script')) {
-      this.renderRecaptcha();
+      this.recaptchaScriptLoaded = true;
+      this.attemptRecaptchaRender();
       return;
     }
 
@@ -239,24 +251,65 @@ export class ContactFormComponent implements OnInit, OnDestroy {
     // Set up the callback that will be called when reCAPTCHA loads
     (window as any).onRecaptchaLoad = () => {
       this.recaptchaLoaded = true;
-      this.renderRecaptcha();
+      this.recaptchaScriptLoaded = true;
+      this.attemptRecaptchaRender();
+    };
+
+    script.onerror = () => {
+      console.error('Failed to load reCAPTCHA script');
     };
 
     document.head.appendChild(script);
   }
 
   /**
-   * Render the reCAPTCHA widget
+   * Attempt to render reCAPTCHA with retry logic
    */
-  renderRecaptcha(): void {
-    if (typeof grecaptcha === 'undefined' || !grecaptcha.render) {
-      console.error('reCAPTCHA not loaded yet');
+  attemptRecaptchaRender(): void {
+    this.recaptchaRenderAttempts++;
+
+    if (this.recaptchaRenderAttempts > this.maxRenderAttempts) {
+      console.error('Max reCAPTCHA render attempts reached');
       return;
     }
 
+    // Check if element exists
+    const element = document.getElementById('recaptcha-element');
+    
+    if (!element) {
+      // Element not ready yet, try again after a short delay
+      setTimeout(() => this.attemptRecaptchaRender(), 200);
+      return;
+    }
+
+    // Check if grecaptcha is loaded
+    if (typeof grecaptcha === 'undefined' || !grecaptcha.render) {
+      // grecaptcha not ready yet, try again after a short delay
+      setTimeout(() => this.attemptRecaptchaRender(), 200);
+      return;
+    }
+
+    // Check if already rendered
+    if (this.recaptchaWidgetId !== null) {
+      return;
+    }
+
+    // Everything is ready, render it
+    this.renderRecaptcha();
+  }
+
+  /**
+   * Render the reCAPTCHA widget
+   */
+  renderRecaptcha(): void {
     const element = document.getElementById('recaptcha-element');
     if (!element) {
       console.error('reCAPTCHA element not found');
+      return;
+    }
+
+    if (typeof grecaptcha === 'undefined' || !grecaptcha.render) {
+      console.error('grecaptcha not loaded');
       return;
     }
 
@@ -267,6 +320,8 @@ export class ContactFormComponent implements OnInit, OnDestroy {
         'expired-callback': () => this.onRecaptchaExpired(),
         'error-callback': () => this.onRecaptchaError()
       });
+      
+      console.log('reCAPTCHA rendered successfully');
     } catch (error) {
       console.error('Error rendering reCAPTCHA:', error);
     }
@@ -278,6 +333,7 @@ export class ContactFormComponent implements OnInit, OnDestroy {
   onRecaptchaSuccess(token: string): void {
     this.contactForm.patchValue({ recaptchaToken: token });
     this.contactForm.get('recaptchaToken')?.markAsTouched();
+    this.cdr.detectChanges();
   }
 
   /**
@@ -287,6 +343,7 @@ export class ContactFormComponent implements OnInit, OnDestroy {
     this.contactForm.patchValue({ recaptchaToken: '' });
     this.contactForm.get('recaptchaToken')?.markAsTouched();
     console.warn('reCAPTCHA expired');
+    this.cdr.detectChanges();
   }
 
   /**
@@ -296,6 +353,7 @@ export class ContactFormComponent implements OnInit, OnDestroy {
     this.contactForm.patchValue({ recaptchaToken: '' });
     this.contactForm.get('recaptchaToken')?.markAsTouched();
     console.error('reCAPTCHA error occurred');
+    this.cdr.detectChanges();
   }
 
   onSubmit(): void {
