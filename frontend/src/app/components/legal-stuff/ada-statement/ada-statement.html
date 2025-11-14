@@ -49,11 +49,13 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end" style="padding-top: 15px;">
-  <button 
-    mat-raised-button 
-    color="primary" 
-    (click)="onAcknowledge()" 
-    [class.bounce]="shouldBounce">
-    I have read this document 
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="onAcknowledge()"
+    [class.bounce]="shouldBounce"
+  >
+    <mat-icon class="cutom-mat-icon">check</mat-icon>
+    I have read this document
   </button>
 </mat-dialog-actions>

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { PolicyDialogData } from '../privacy-policy/privacy-policy';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-ada-statement',
@@ -10,7 +11,8 @@ import { PolicyDialogData } from '../privacy-policy/privacy-policy';
   imports: [
     CommonModule,
     MatDialogModule,
-    MatButtonModule
+    MatButtonModule,
+    MatIconModule
   ],
   templateUrl: './ada-statement.html',
   styleUrl: './ada-statement.scss',
