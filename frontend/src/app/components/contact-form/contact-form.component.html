@@ -253,6 +253,18 @@
               {{ error }}
             </div>
 
+            <div class="honeypot-field">
+              <label for="website">Website</label>
+              <input 
+                type="text" 
+                id="website" 
+                name="website" 
+                formControlName="website"
+                autocomplete="off"
+                tabindex="-1"
+                aria-hidden="true">
+            </div>
+
             <div class="recaptcha-container">
               <div id="recaptcha-element"></div>
               <mat-error *ngIf="contactForm.get('recaptchaToken')?.invalid && contactForm.get('recaptchaToken')?.touched">

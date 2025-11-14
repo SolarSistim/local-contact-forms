@@ -224,7 +224,9 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
       phone: ['', [Validators.required, this.phoneValidator]],
       reason: ['', [Validators.required]],
       message: ['', []],
-      recaptchaToken: ['', [Validators.required]]
+      recaptchaToken: ['', [Validators.required]],
+      // Honeypot field - should remain empty
+      website: ['']  // Bots often fill in fields named "website" or "url"
     });
   }
 
@@ -357,6 +359,34 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onSubmit(): void {
+    // HONEYPOT CHECK - If the honeypot field is filled, it's likely a bot
+    const honeypotValue = this.contactForm.get('website')?.value;
+    if (honeypotValue && honeypotValue.trim() !== '') {
+      console.warn('Honeypot field was filled - likely bot submission');
+      
+      // Silently fail - don't show error to the bot
+      // This makes it think the submission was successful
+      this.submitting = true;
+      
+      // Simulate a successful submission after a realistic delay
+      setTimeout(() => {
+        this.success = true;
+        this.contactForm.reset();
+        this.submitting = false;
+        
+        // Reset reCAPTCHA
+        if (this.recaptchaWidgetId !== null && typeof grecaptcha !== 'undefined') {
+          try {
+            grecaptcha.reset(this.recaptchaWidgetId);
+          } catch (e) {
+            console.error('Error resetting reCAPTCHA:', e);
+          }
+        }
+      }, 1500); // Realistic submission time
+      
+      return; // Stop here - don't actually submit
+    }
+
     // Mark all fields as touched to show validation errors
     Object.keys(this.contactForm.controls).forEach(key => {
       this.contactForm.get(key)?.markAsTouched();
@@ -379,7 +409,8 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
       notes: this.contactForm.get('message')?.value,
       notifyTo: this.tenantConfig?.notify_on_submit,
       submissionsSheetId: this.tenantConfig?.submissionsSheetId,
-      recaptchaToken: this.contactForm.get('recaptchaToken')?.value
+      recaptchaToken: this.contactForm.get('recaptchaToken')?.value,
+      // Don't send the honeypot field to the backend
     };
 
     this.apiService.submitForm(formData).subscribe({
