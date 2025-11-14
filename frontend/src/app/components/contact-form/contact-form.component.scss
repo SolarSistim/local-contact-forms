@@ -888,25 +888,25 @@ mat-card-content {
 }
 
 .honeypot-field {
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
-  overflow: hidden;
-  pointer-events: none;
+  // position: absolute;
+  // left: -9999px;
+  // top: -9999px;
+  // overflow: hidden;
+  // pointer-events: none;
   label {
-    position: absolute;
-    left: -9999px;
+    // position: absolute;
+    // left: -9999px;
   }
   
   input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    border: 0;
-    clip: rect(0, 0, 0, 0);
-    overflow: hidden;
+    // position: absolute;
+    // width: 1px;
+    // height: 1px;
+    // padding: 0;
+    // margin: -1px;
+    // border: 0;
+    // clip: rect(0, 0, 0, 0);
+    // overflow: hidden;
   }
 }
 

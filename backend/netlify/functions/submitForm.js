@@ -126,7 +126,47 @@ async function verifyRecaptcha(token, remoteip) {
   }
 }
 
-function validateSubmission(body) {
+function validateSubmission(body, ip, userAgent) {
+  // HONEYPOT CHECK - If any honeypot field is filled, it's a bot
+  // Check multiple possible honeypot field names
+  const honeypotFields = ['website', 'honeypot', 'url', 'homepage'];
+  
+  for (const field of honeypotFields) {
+    if (body[field] !== undefined && body[field] !== null) {
+      const value = String(body[field]).trim();
+      if (value !== '') {
+        // LOG BOT ATTEMPT WITH FULL DETAILS
+        console.warn('═══════════════════════════════════════════════════════');
+        console.warn('🚨 BOT DETECTED - HONEYPOT TRIGGERED 🚨');
+        console.warn('═══════════════════════════════════════════════════════');
+        console.warn('Timestamp:', new Date().toISOString());
+        console.warn('Detection Method: Honeypot Field');
+        console.warn('Honeypot Field:', field);
+        console.warn('Honeypot Value:', value.substring(0, 100)); // First 100 chars
+        console.warn('-----------------------------------------------------------');
+        console.warn('Submitted Data:');
+        console.warn('  First Name:', body.firstName || '[empty]');
+        console.warn('  Last Name:', body.lastName || '[empty]');
+        console.warn('  Email:', body.email || '[empty]');
+        console.warn('  Phone:', body.phone || '[empty]');
+        console.warn('  Reason:', body.reason || '[empty]');
+        console.warn('  Message:', (body.notes || '[empty]').substring(0, 100));
+        console.warn('-----------------------------------------------------------');
+        console.warn('Request Info:');
+        console.warn('  IP Address:', ip);
+        console.warn('  User Agent:', userAgent);
+        console.warn('═══════════════════════════════════════════════════════');
+        
+        return {
+          valid: false,
+          error: 'Invalid submission',
+          code: 'HONEYPOT_TRIGGERED',
+          isBot: true
+        };
+      }
+    }
+  }
+
   // Check for reCAPTCHA token
   if (!body.recaptchaToken) {
     return {
@@ -314,6 +354,8 @@ exports.handler = async (event, context) => {
 
   // Rate limiting by IP
   const ip = event.headers['x-forwarded-for'] || event.headers['x-nf-client-connection-ip'] || context.ip;
+  const userAgent = event.headers['user-agent'] || 'Unknown';
+  
   if (!checkSubmitRateLimit(ip)) {
     console.warn(`Rate limit exceeded for IP: ${ip}`);
     return {
@@ -342,18 +384,42 @@ exports.handler = async (event, context) => {
     };
   }
 
+  // Check if honeypot fields exist in submission
+  const honeypotPresent = !!(body.website || body.honeypot || body.url || body.homepage);
+
   console.log("Form submission received:", {
     firstName: body.firstName,
     lastName: body.lastName,
     email: body.email,
     notifyTo: body.notifyTo,
-    hasRecaptchaToken: !!body.recaptchaToken
+    hasRecaptchaToken: !!body.recaptchaToken,
+    honeypotPresent: honeypotPresent,
+    ip: ip,
+    userAgent: userAgent.substring(0, 100)
   });
 
-  // Validate submission data (including reCAPTCHA token presence)
-  const validation = validateSubmission(body);
+  // Validate submission data (includes honeypot check)
+  const validation = validateSubmission(body, ip, userAgent);
   if (!validation.valid) {
     console.error("Validation failed:", validation.error);
+    
+    // If honeypot was triggered, pretend it succeeded (don't let bot know)
+    if (validation.isBot) {
+      console.log("🤖 Returning fake success response to bot");
+      console.log("Action taken: BOT BLOCKED - No data saved, no email sent");
+      console.log("═══════════════════════════════════════════════════════");
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ 
+          success: true, 
+          sheet: true,
+          email: true
+        }),
+      };
+    }
+    
+    // For other validation errors, return the actual error
     return {
       statusCode: 400,
       headers: corsHeaders,
@@ -392,7 +458,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    console.log('reCAPTCHA verified successfully for IP:', ip);
+    console.log('✅ reCAPTCHA verified successfully for IP:', ip);
 
   } catch (recaptchaError) {
     console.error('reCAPTCHA verification error:', recaptchaError);
@@ -511,7 +577,7 @@ exports.handler = async (event, context) => {
       });
 
       sheetOk = true;
-      console.log("Successfully wrote to Google Sheet");
+      console.log("✅ Successfully wrote to Google Sheet");
     } catch (insertErr) {
       console.error("Row insert failed, trying append:", insertErr.message);
       // fallback to simple append at end
@@ -525,7 +591,7 @@ exports.handler = async (event, context) => {
         },
       });
       sheetOk = true;
-      console.log("Successfully appended to Google Sheet");
+      console.log("✅ Successfully appended to Google Sheet");
     }
 
     // Send notification email
@@ -617,7 +683,7 @@ exports.handler = async (event, context) => {
 
       const emailResult = await transporter.sendMail(mailOptions);
       emailOk = true;
-      console.log("Notification email sent successfully:", emailResult.messageId);
+      console.log("✅ Notification email sent successfully:", emailResult.messageId);
     } catch (emailErr) {
       emailOk = false;
       console.error("Notification email failed:", emailErr);
@@ -631,7 +697,7 @@ exports.handler = async (event, context) => {
       console.error("Skipping admin notification due to email configuration issue");
     }
 
-    console.log("Form submission completed:", { sheetOk, emailOk });
+    console.log("✅ Form submission completed successfully:", { sheetOk, emailOk });
 
     return {
       statusCode: 200,

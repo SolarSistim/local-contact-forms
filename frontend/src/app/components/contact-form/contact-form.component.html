@@ -145,6 +145,19 @@
         <!-- Right Panel - Contact Form (2/3) -->
         <div class="form-panel">
           <form [formGroup]="contactForm" (ngSubmit)="onSubmit()">
+
+                        <div class="honeypot-field">
+              <label for="website">Website</label>
+              <input 
+                type="text" 
+                id="website" 
+                name="website" 
+                formControlName="website"
+                autocomplete="off"
+                tabindex="-1"
+                aria-hidden="true">
+            </div>
+
             <!-- First Name / Last Name Row -->
             <div class="form-row">
               <mat-form-field appearance="fill">
@@ -251,18 +264,6 @@
             <div *ngIf="error" class="form-error-message">
               <mat-icon>warning</mat-icon>
               {{ error }}
-            </div>
-
-            <div class="honeypot-field">
-              <label for="website">Website</label>
-              <input 
-                type="text" 
-                id="website" 
-                name="website" 
-                formControlName="website"
-                autocomplete="off"
-                tabindex="-1"
-                aria-hidden="true">
             </div>
 
             <div class="recaptcha-container">
