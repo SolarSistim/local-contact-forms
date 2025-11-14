@@ -153,12 +153,12 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
-      this.tenantId = params['tenantId'] || null;
+      this.tenantId = params['id'] || params['tenantId'] || null;
 
       // Fallback to window location search if not found in route params
       if (!this.tenantId && typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
-        this.tenantId = urlParams.get('tenantId');
+        this.tenantId = urlParams.get('id') || urlParams.get('tenantId');
       }
 
       if (this.tenantId) {
