@@ -1,7 +1,18 @@
 // netlify/functions/submitForm.js
 require("dotenv").config();
 const { google } = require("googleapis");
-const nodemailer = require("nodemailer");
+
+// Proper nodemailer import for Netlify functions
+let nodemailer;
+try {
+  nodemailer = require("nodemailer");
+  // If nodemailer is wrapped, unwrap it
+  if (nodemailer.default) {
+    nodemailer = nodemailer.default;
+  }
+} catch (err) {
+  console.error("Failed to load nodemailer:", err);
+}
 
 // Dynamic import for node-fetch (supports both CommonJS and ESM)
 let fetch;
@@ -223,7 +234,10 @@ function getGmailTransport() {
   console.log("Email config check:", {
     gmailUserSet: !!gmailUser,
     gmailPassSet: !!gmailPass,
-    gmailUser: gmailUser ? gmailUser.substring(0, 3) + '***' : 'NOT SET'
+    gmailUser: gmailUser ? gmailUser.substring(0, 3) + '***' : 'NOT SET',
+    nodemailerAvailable: !!nodemailer,
+    nodemailerType: typeof nodemailer,
+    hasCreateTransporter: !!(nodemailer && nodemailer.createTransport)
   });
 
   if (!gmailUser || !gmailPass) {
@@ -232,7 +246,13 @@ function getGmailTransport() {
     throw err;
   }
 
-  return nodemailer.createTransporter({
+  if (!nodemailer || !nodemailer.createTransport) {
+    const err = new Error("Nodemailer not properly loaded");
+    err.code = "NODEMAILER_MISSING";
+    throw err;
+  }
+
+  return nodemailer.createTransport({
     service: "gmail",
     auth: {
       user: gmailUser,
@@ -607,10 +627,8 @@ exports.handler = async (event, context) => {
         command: emailErr.command
       });
       
-      await notifyAdminOnError(
-        "LCF Warning: Notification email failed",
-        `Submit succeeded but notification email failed.\nError: ${emailErr.message}\n\nStack: ${emailErr.stack}`
-      );
+      // Don't try to send admin notification if email is broken
+      console.error("Skipping admin notification due to email configuration issue");
     }
 
     console.log("Form submission completed:", { sheetOk, emailOk });
@@ -627,11 +645,6 @@ exports.handler = async (event, context) => {
   } catch (err) {
     console.error("submitForm fatal error:", err);
     console.error("Error stack:", err.stack);
-
-    await notifyAdminOnError(
-      "LCF Error: submitForm failed",
-      `submitForm failed with error:\n${err.message}\n\nStack:\n${err.stack}`
-    );
 
     return {
       statusCode: 500,

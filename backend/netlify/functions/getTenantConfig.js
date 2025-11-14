@@ -6,6 +6,7 @@ const { google } = require("googleapis");
 const ALLOWED_ORIGINS = [
   'https://localcontactforms.com',
   'https://www.localcontactforms.com',
+  'https://local-contact-forms.netlify.app',
   'http://localhost:8888',
   'http://localhost:4200'
 ];
@@ -50,6 +51,7 @@ const PUBLIC_FIELDS = [
   'x_url',
   'youtube_url',
   'submissionsSheetId', // Needed by submitForm
+  'notify_on_submit',   // Needed by submitForm for email notifications
   'tenantId',
   'status'
 ];
@@ -299,7 +301,7 @@ exports.handler = async (event) => {
     // Validate the full config (including notify_on_submit)
     const validation = validateTenantConfig(combined);
 
-    // Filter to only return public fields (removes notify_on_submit)
+    // Filter to only return public fields (now includes notify_on_submit)
     const publicConfig = {};
     for (const field of PUBLIC_FIELDS) {
       if (combined[field] !== undefined) {
