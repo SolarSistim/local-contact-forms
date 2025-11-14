@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../services/api.service';
+import { TenantMetaService } from '../../services/tenant-meta-service';
 import { ThemeService } from '../../services/theme.service';
 import { TenantConfig } from '../../types/tenant-config';
 import { LoaderComponent } from '../loader/loader.component';
@@ -141,15 +142,16 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
     return null;
   }
 
-  constructor(
-    private fb: FormBuilder,
-    private route: ActivatedRoute,
-    private apiService: ApiService,
-    private themeService: ThemeService,
-    private dialog: MatDialog,
-    private sanitizer: DomSanitizer,
-    private cdr: ChangeDetectorRef
-  ) {}
+constructor(
+  private fb: FormBuilder,
+  private route: ActivatedRoute,
+  private apiService: ApiService,
+  private tenantMetaService: TenantMetaService,
+  private themeService: ThemeService,
+  private dialog: MatDialog,
+  private sanitizer: DomSanitizer,
+  private cdr: ChangeDetectorRef
+) {}
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
@@ -188,38 +190,46 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadTenantConfig(): void {
-    if (!this.tenantId) return;
+  if (!this.tenantId) return;
 
-    this.apiService.getTenantConfig(this.tenantId).subscribe({
-      next: (response) => {
-        if (response.success && response.valid) {
-          this.tenantConfig = response.config;
-          console.log('Rate limit for this tenant:', response.config.rate_limit_per_hour || '30 (default)');
-          // Parse reason_for_contact options
-          if (response.config.reason_for_contact) {
-            this.reasonOptions = response.config.reason_for_contact
-              .split(',')
-              .map(reason => reason.trim())
-              .filter(reason => reason.length > 0);
-          }
-          // Apply the theme based on the tenant config
-          this.themeService.applyTheme(response.config.theme);
-          this.initializeForm();
-          
-          // CHANGED: Only set loading to false once both config AND reCAPTCHA are ready
-          this.checkIfReadyToDisplay();
-        } else {
-          this.error = 'Failed to load tenant configuration';
-          this.loading = false;
+  this.tenantMetaService.loadAndApplyTenantMeta(this.tenantId).subscribe({
+    next: (response) => {
+      // Add null check first
+      if (!response) {
+        this.error = 'Failed to load tenant configuration';
+        this.loading = false;
+        return;
+      }
+
+      // Now TypeScript knows response is not null
+      if (response.success && response.valid) {
+        this.tenantConfig = response.config;
+        console.log('Rate limit for this tenant:', response.config.rate_limit_per_hour || '30 (default)');
+        // Parse reason_for_contact options
+        if (response.config.reason_for_contact) {
+          this.reasonOptions = response.config.reason_for_contact
+            .split(',')
+            .map(reason => reason.trim())
+            .filter(reason => reason.length > 0);
         }
-      },
-      error: (err) => {
-        console.error('Error loading tenant config:', err);
+        // Apply the theme based on the tenant config
+        this.themeService.applyTheme(response.config.theme);
+        this.initializeForm();
+        
+        // CHANGED: Only set loading to false once both config AND reCAPTCHA are ready
+        this.checkIfReadyToDisplay();
+      } else {
         this.error = 'Failed to load tenant configuration';
         this.loading = false;
       }
-    });
-  }
+    },
+    error: (err) => {
+      console.error('Error loading tenant config:', err);
+      this.error = 'Failed to load tenant configuration';
+      this.loading = false;
+    }
+  });
+}
 
   /**
    * NEW: Check if both tenant config and reCAPTCHA are ready before displaying form
