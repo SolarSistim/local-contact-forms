@@ -52,6 +52,7 @@ const PUBLIC_FIELDS = [
   'youtube_url',
   'submissionsSheetId', // Needed by submitForm
   'notify_on_submit',   // Needed by submitForm for email notifications
+  'rate_limit_per_hour', // Needed by submitForm for rate limiting
   'tenantId',
   'status'
 ];
@@ -187,6 +188,7 @@ async function getTenantRowFromMaster(sheets, tenantIdRaw) {
   const configSheetIdIdx = header.indexOf("config_sheet_id");
   const submissionsSheetIdIdx = header.indexOf("submissions_sheet_id");
   const statusIdx = header.indexOf("status");
+  const rateLimitIdx = header.indexOf("rate_limit_per_hour");
 
   if (tenantIdIdx === -1 || configSheetIdIdx === -1) {
     const err = new Error(
@@ -213,6 +215,7 @@ async function getTenantRowFromMaster(sheets, tenantIdRaw) {
     configSheetId: match[configSheetIdIdx],
     submissionsSheetId: submissionsSheetIdIdx !== -1 ? match[submissionsSheetIdIdx] : null,
     status: statusIdx !== -1 ? match[statusIdx] : "unknown",
+    rate_limit_per_hour: rateLimitIdx !== -1 ? match[rateLimitIdx] : null,
   };
 }
 
@@ -295,6 +298,7 @@ exports.handler = async (event) => {
       tenantId: masterInfo.tenantId,
       status: masterInfo.status,
       submissionsSheetId: masterInfo.submissionsSheetId,
+      rate_limit_per_hour: masterInfo.rate_limit_per_hour,
       ...tenantConfig,
     };
 

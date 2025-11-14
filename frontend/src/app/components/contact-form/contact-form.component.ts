@@ -194,6 +194,7 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (response) => {
         if (response.success && response.valid) {
           this.tenantConfig = response.config;
+          console.log('Rate limit for this tenant:', response.config.rate_limit_per_hour || '30 (default)');
           // Parse reason_for_contact options
           if (response.config.reason_for_contact) {
             this.reasonOptions = response.config.reason_for_contact
@@ -425,6 +426,7 @@ export class ContactFormComponent implements OnInit, AfterViewInit, OnDestroy {
     notifyTo: this.tenantConfig?.notify_on_submit,
     submissionsSheetId: this.tenantConfig?.submissionsSheetId,
     recaptchaToken: this.contactForm.get('recaptchaToken')?.value,
+    rate_limit_per_hour: this.tenantConfig?.rate_limit_per_hour,
     // Send the honeypot field to the backend so it can detect bots
     website: honeypotValue ? honeypotValue.trim() : ''
   };

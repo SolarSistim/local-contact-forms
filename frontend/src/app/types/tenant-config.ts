@@ -27,6 +27,7 @@ export interface TenantConfig {
   wechat_url?: string;
   x_url?: string;
   youtube_url?: string;
+  rate_limit_per_hour?: number;
 }
 
 export interface TenantConfigResponse {

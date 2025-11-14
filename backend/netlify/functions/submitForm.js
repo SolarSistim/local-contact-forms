@@ -48,7 +48,7 @@ function getCorsHeaders(requestOrigin) {
 // Simple in-memory rate limiting
 const submitRateLimits = new Map();
 
-function checkSubmitRateLimit(ip) {
+function checkSubmitRateLimit(ip, maxSubmissions = 30) {
   const now = Date.now();
   const record = submitRateLimits.get(ip) || { count: 0, resetTime: now + 3600000 }; // 1 hour
   
@@ -60,7 +60,7 @@ function checkSubmitRateLimit(ip) {
   }
   
   submitRateLimits.set(ip, record);
-  return record.count <= 10; // 10 submissions per IP per hour
+  return record.count <= maxSubmissions;
 }
 
 // Clean up old rate limit entries periodically
@@ -330,6 +330,10 @@ async function notifyAdminOnError(subject, message) {
 }
 
 exports.handler = async (event, context) => {
+  console.log('submitForm handler called');
+  console.log('HTTP Method:', event.httpMethod);
+  console.log('Origin:', event.headers.origin);
+  
   const corsHeaders = getCorsHeaders(event.headers.origin);
 
   if (event.httpMethod === "OPTIONS") {
@@ -352,22 +356,9 @@ exports.handler = async (event, context) => {
     };
   }
 
-  // Rate limiting by IP
+  // Get IP and user agent first
   const ip = event.headers['x-forwarded-for'] || event.headers['x-nf-client-connection-ip'] || context.ip;
   const userAgent = event.headers['user-agent'] || 'Unknown';
-  
-  if (!checkSubmitRateLimit(ip)) {
-    console.warn(`Rate limit exceeded for IP: ${ip}`);
-    return {
-      statusCode: 429,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        success: false, 
-        code: "RATE_LIMIT_EXCEEDED", 
-        error: "Too many submissions. Please try again later." 
-      }),
-    };
-  }
 
   let body;
   try {
@@ -380,6 +371,34 @@ exports.handler = async (event, context) => {
         success: false, 
         code: "BAD_JSON", 
         error: "Invalid JSON body" 
+      }),
+    };
+  }
+
+  // Rate limiting by IP - check after parsing body to access tenant config
+  let rateLimitPerHour = 30; // default
+  try {
+    if (body.rate_limit_per_hour) {
+      const parsed = parseInt(body.rate_limit_per_hour);
+      if (!isNaN(parsed) && parsed > 0) {
+        rateLimitPerHour = parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse rate_limit_per_hour, using default:', e);
+  }
+  
+  console.log('Rate limit for this submission:', rateLimitPerHour);
+  
+  if (!checkSubmitRateLimit(ip, rateLimitPerHour)) {
+    console.warn(`Rate limit exceeded for IP: ${ip} (limit: ${rateLimitPerHour}/hour)`);
+    return {
+      statusCode: 429,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: false, 
+        code: "RATE_LIMIT_EXCEEDED", 
+        error: "Too many submissions. Please try again later." 
       }),
     };
   }
